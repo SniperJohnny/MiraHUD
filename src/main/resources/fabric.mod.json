@@ -1,33 +1,33 @@
 {
 	"schemaVersion": 1,
-	"id": "mirage",
+	"id": "mirahud",
 	"version": "${version}",
-	"name": "Mirage",
+	"name": "MiraHUD",
 	"description": "This mod is there for quality of life changes such as widgets in the gui which lets you use commands out of you inv. Also in here is an inbuild video player and image shower. right into mc!",
 	"authors": [
 		"SniperJohnny"
 	],
 	"contact": {
-		"sources": "https://github.com/SniperJohnny/Mirage"
+		"sources": "https://github.com/SniperJohnny/MiraHUD"
 	},
 	"license": "MIT",
-	"icon": "assets/mirage/Mirage_Logo.png",
+	"icon": "assets/mirahud/MiraHUD_logo.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"io.sniperjohnny.github.mirage.Mirage"
+			"io.sniperjohnny.github.mirahud.MiraHUD"
 		],
 		"client": [
-			"io.sniperjohnny.github.mirage.client.Mirage"
+			"io.sniperjohnny.github.mirahud.client.MiraHUD"
 		],
 		"fabric-datagen": [
-			"io.sniperjohnny.github.mirage.client.MirageDataGenerator"
+			"io.sniperjohnny.github.mirahud.client.MiraHUDDataGenerator"
 		]
 	},
 	"mixins": [
-		"mirage.mixins.json",
+		"mirahud.mixins.json",
 		{
-			"config": "mirage.client.mixins.json",
+			"config": "mirahud.client.mixins.json",
 			"environment": "client"
 		}
 	],
