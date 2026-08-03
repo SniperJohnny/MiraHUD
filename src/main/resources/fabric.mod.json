@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "mirage",
+	"version": "${version}",
+	"name": "Mirage",
+	"description": "This mod is there for quality of life changes such as widgets in the gui which lets you use commands out of you inv. Also in here is an inbuild video player and image shower. right into mc!",
+	"authors": [
+		"SniperJohnny"
+	],
+	"contact": {
+		"sources": "https://github.com/SniperJohnny/Mirage"
+	},
+	"license": "MIT",
+	"icon": "assets/mirage/Mirage_Logo.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"io.sniperjohnny.github.mirage.Mirage"
+		],
+		"client": [
+			"io.sniperjohnny.github.mirage.client.Mirage"
+		],
+		"fabric-datagen": [
+			"io.sniperjohnny.github.mirage.client.MirageDataGenerator"
+		]
+	},
+	"mixins": [
+		"mirage.mixins.json",
+		{
+			"config": "mirage.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
