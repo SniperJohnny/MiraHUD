@@ -7,10 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Manages multi-overlay config persistence via {@link RootConfig}.
- * Migrates legacy single-overlay configs automatically.
- */
 public class OverlayConfigManager {
     private static final Path CONFIG_DIR = FabricLoader.getInstance()
             .getConfigDir()
@@ -24,14 +20,12 @@ public class OverlayConfigManager {
 
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve("overlays.json");
 
-    /** Old path before overlay configs were moved into the overlay/ subfolder. */
     private static final Path OLD_OVERLAY_PATH = FabricLoader.getInstance()
             .getConfigDir()
             .resolve(MiraHUD.MOD_ID)
             .resolve("configs")
             .resolve("overlays.json");
 
-    /** Old presets directory before moving into overlay/presets/. */
     private static final Path OLD_PRESETS_DIR = FabricLoader.getInstance()
             .getConfigDir()
             .resolve(MiraHUD.MOD_ID)
@@ -95,7 +89,6 @@ public class OverlayConfigManager {
     private static void migrateIfNeeded() {
         migrated = true;
 
-        // 1. Migrate old overlays.json (configs/overlays.json → configs/overlay/overlays.json)
         if (Files.exists(OLD_OVERLAY_PATH) && !Files.exists(CONFIG_PATH)) {
             try {
                 Files.createDirectories(CONFIG_DIR);
@@ -106,7 +99,6 @@ public class OverlayConfigManager {
             }
         }
 
-        // 2. Migrate old presets dir (configs/presets/ → configs/overlay/presets/)
         if (Files.exists(OLD_PRESETS_DIR) && Files.isDirectory(OLD_PRESETS_DIR)) {
             Path newPresetsDir = CONFIG_DIR.resolve("presets");
             if (!Files.exists(newPresetsDir)) {
@@ -120,7 +112,6 @@ public class OverlayConfigManager {
             }
         }
 
-        // 3. Legacy single-overlay config migration
         if (!Files.exists(LEGACY_PATH)) return;
         try {
             String json = Files.readString(LEGACY_PATH);

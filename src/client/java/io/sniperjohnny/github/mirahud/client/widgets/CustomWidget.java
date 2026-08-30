@@ -14,16 +14,16 @@ import net.minecraft.world.level.block.Blocks;
 public class CustomWidget extends AbstractWidget {
     private final Runnable onPress;
     private final String iconFilepath;
-    public boolean iswanted; // FIXED: Removed 'static' keyword
+    public boolean wanted;
 
     private static final Identifier BUTTON_SPRITE = Identifier.withDefaultNamespace("widget/button");
     private static final Identifier BUTTON_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("widget/button_highlighted");
 
-    public CustomWidget(int x, int y, int width, int height, Runnable onPress, String iconFilepath, boolean iswanted) {
+    public CustomWidget(int x, int y, int width, int height, Runnable onPress, String iconFilepath, boolean wanted) {
         super(x, y, width, height, Component.empty());
         this.onPress = onPress;
         this.iconFilepath = iconFilepath;
-        this.iswanted = iswanted;
+        this.wanted = wanted;
     }
 
     @Override
@@ -36,7 +36,6 @@ public class CustomWidget extends AbstractWidget {
 
     @Override
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // 1. Render button background
         Identifier backgroundSprite = this.isHovered() ? BUTTON_HIGHLIGHTED_SPRITE : BUTTON_SPRITE;
 
         graphics.blitSprite(
@@ -48,7 +47,6 @@ public class CustomWidget extends AbstractWidget {
                 this.height
         );
 
-        // 2. Render Icon or Item inside button bounds
         switch (this.iconFilepath) {
             case "ec":
                 renderScaledItem(graphics, new ItemStack(Blocks.ENDER_CHEST));
@@ -63,10 +61,8 @@ public class CustomWidget extends AbstractWidget {
                 renderScaledItem(graphics, new ItemStack(Blocks.GOLD_BLOCK));
                 break;
             default:
-                // Custom texture rendering
                 Identifier iconTexture = Identifier.fromNamespaceAndPath(MiraHUD.MOD_ID, this.iconFilepath);
 
-                // Add padding inside the button (e.g., 4px inset)
                 int padding = 4;
                 graphics.blit(
                         RenderPipelines.GUI_TEXTURED,
@@ -84,20 +80,14 @@ public class CustomWidget extends AbstractWidget {
         }
     }
 
-    /**
-     * Helper method to render an item centered and scaled inside the widget bounds.
-     */
     private void renderScaledItem(GuiGraphics graphics, ItemStack itemStack) {
         float scaleX = (float) this.width / 16.0f;
         float scaleY = (float) this.height / 16.0f;
 
         graphics.pose().pushMatrix();
-        // Translate matrix to widget top-left position
         graphics.pose().translate(this.getX(), this.getY());
-        // Scale matrix down/up based on widget dimensions vs standard 16x16 item size
         graphics.pose().scale(scaleX, scaleY);
 
-        // Render item at local (0,0) of the matrix transformation
         graphics.renderItem(itemStack, 0, 0);
         graphics.pose().popMatrix();
     }
@@ -108,6 +98,6 @@ public class CustomWidget extends AbstractWidget {
     }
 
     public boolean isWanted() {
-        return this.iswanted;
+        return this.wanted;
     }
 }

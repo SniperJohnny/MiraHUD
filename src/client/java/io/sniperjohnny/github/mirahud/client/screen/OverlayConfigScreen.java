@@ -9,6 +9,8 @@ import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfig;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPreset;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPresetManager;
+import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
+import net.minecraft.locale.Language;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -36,24 +38,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 public class OverlayConfigScreen extends Screen {
-    // ---- Constants ----
-    private static final Component TITLE = Component.translatable("config.mirahud.title");
-    private static final Component ENABLED_LABEL = Component.translatable("config.mirahud.enabled");
-    private static final Component PATH_LABEL = Component.translatable("config.mirahud.source_path");
-    private static final Component OPACITY_LABEL = Component.translatable("config.mirahud.opacity");
-    private static final Component VOLUME_LABEL = Component.translatable("config.mirahud.volume");
-    private static final Component POS_X_LABEL = Component.translatable("config.mirahud.pos_x");
-    private static final Component POS_Y_LABEL = Component.translatable("config.mirahud.pos_y");
-    private static final Component WIDTH_LABEL = Component.translatable("config.mirahud.width");
-    private static final Component HEIGHT_LABEL = Component.translatable("config.mirahud.height");
-    private static final Component ANCHOR_LABEL = Component.translatable("config.mirahud.anchor");
-    private static final Component LOCK_ASPECT_LABEL = Component.translatable("config.mirahud.lock_aspect_ratio");
-    private static final Component PREVIEW_LABEL = Component.translatable("config.mirahud.preview");
-    private static final Component PRESET_NAME_LABEL = Component.translatable("config.mirahud.preset_name_label");
-    private static final Component ADD_OVERLAY_LABEL = Component.translatable("config.mirahud.add_overlay");
-    private static final Component REMOVE_OVERLAY_LABEL = Component.translatable("config.mirahud.remove_overlay");
-    private static final Component MEDIA_TYPE_LABEL = Component.translatable("config.mirahud.media_type");
-    private static final Component PLAY_PAUSE_LABEL = Component.translatable("config.mirahud.play_pause");
+    private static final Component TITLE = Component.translatable(TranslationsKeys.CONFIG_TITLE);
+    private static final Component ENABLED_LABEL = Component.translatable(TranslationsKeys.CONFIG_ENABLED);
+    private static final Component PATH_LABEL = Component.translatable(TranslationsKeys.CONFIG_SOURCE_PATH);
+    private static final Component OPACITY_LABEL = Component.translatable(TranslationsKeys.CONFIG_OPACITY);
+    private static final Component VOLUME_LABEL = Component.translatable(TranslationsKeys.CONFIG_VOLUME);
+    private static final Component POS_X_LABEL = Component.translatable(TranslationsKeys.CONFIG_POS_X);
+    private static final Component POS_Y_LABEL = Component.translatable(TranslationsKeys.CONFIG_POS_Y);
+    private static final Component WIDTH_LABEL = Component.translatable(TranslationsKeys.CONFIG_WIDTH);
+    private static final Component HEIGHT_LABEL = Component.translatable(TranslationsKeys.CONFIG_HEIGHT);
+    private static final Component ANCHOR_LABEL = Component.translatable(TranslationsKeys.CONFIG_ANCHOR);
+    private static final Component LOCK_ASPECT_LABEL = Component.translatable(TranslationsKeys.CONFIG_LOCK_ASPECT_RATIO);
+    private static final Component PREVIEW_LABEL = Component.translatable(TranslationsKeys.CONFIG_PREVIEW);
+    private static final Component PRESET_NAME_LABEL = Component.translatable(TranslationsKeys.CONFIG_PRESET_NAME_LABEL);
+    private static final Component ADD_OVERLAY_LABEL = Component.translatable(TranslationsKeys.CONFIG_ADD_OVERLAY);
+    private static final Component REMOVE_OVERLAY_LABEL = Component.translatable(TranslationsKeys.CONFIG_REMOVE_OVERLAY);
+    private static final Component MEDIA_TYPE_LABEL = Component.translatable(TranslationsKeys.CONFIG_MEDIA_TYPE);
+    private static final Component PLAY_PAUSE_LABEL = Component.translatable(TranslationsKeys.CONFIG_PLAY_PAUSE);
 
     private static final int DRAG_HITBOX_SLACK = 10;
     private static final int DRAG_MIN_VISIBLE_PX = 24;
@@ -61,12 +62,11 @@ public class OverlayConfigScreen extends Screen {
     private static final int IMAGE_IMPORT_MIN_SIZE = 16;
     private static final int OVERLAY_LIST_WIDTH = 130;
 
-    // ---- State ----
     private final Screen parent;
     private final List<OverlayConfig> overlayConfigs;
     private final List<OverlayConfig> initialConfigs;
     private int selectedIndex;
-    private ImageTextureManager textureManager; // per-selected-overlay instance
+    private ImageTextureManager textureManager;
 
     private EditBox pathField;
     private EditBox posXField;
@@ -102,14 +102,10 @@ public class OverlayConfigScreen extends Screen {
         if (cfg != null) this.textureManager = ImageTextureManager.forOverlay(cfg.id);
     }
 
-    // ==================== Widget rebuild ====================
-
     protected void rebuildWidgets() {
         this.clearWidgets();
         this.init();
     }
-
-    // ==================== init ====================
 
     @Override
     protected void init() {
@@ -123,14 +119,15 @@ public class OverlayConfigScreen extends Screen {
         int startY = 30;
         int rowHeight = 22;
 
-        // ---- Left: overlay list buttons ----
         int listY = startY;
         for (int i = 0; i < overlayConfigs.size(); i++) {
             final int idx = i;
             OverlayConfig cfg = overlayConfigs.get(i);
-            String label = cfg.enabled ? "§a" : "§7";
-            label += cfg.sourcePath.isBlank() ? "(empty)" : truncate(cfg.sourcePath, 14);
-            Button btn = Button.builder(Component.literal(label), b -> selectOverlay(idx))
+            String prefix = cfg.enabled ? "§a" : "§7";
+            Component label = Component.literal(prefix).append(cfg.sourcePath.isBlank()
+                    ? Component.translatable(TranslationsKeys.CONFIG_EMPTY)
+                    : Component.literal(truncate(cfg.sourcePath, 14)));
+            Button btn = Button.builder(label, b -> selectOverlay(idx))
                     .bounds(5, listY, OVERLAY_LIST_WIDTH - 10, 18).build();
             this.addRenderableWidget(btn);
             listY += 20;
@@ -145,7 +142,6 @@ public class OverlayConfigScreen extends Screen {
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) return;
 
-        // ---- Media type + Enabled ----
         Button typeBtn = Button.builder(mediaTypeLabel(cfg), btn -> { cfg.mediaType = nextMediaType(cfg.mediaType); btn.setMessage(mediaTypeLabel(cfg)); rebuildWidgets(); })
                 .bounds(editStartX, startY, 140, 18).build();
         this.addRenderableWidget(typeBtn);
@@ -154,20 +150,18 @@ public class OverlayConfigScreen extends Screen {
         this.addRenderableWidget(enabledBtn);
         startY += rowHeight + 6;
 
-        // ---- Source path + Browse (side by side so they never overlap) ----
         int browseButtonWidth = 70;
         int pathFieldWidth = Math.max(220, this.width - editStartX - browseButtonWidth - 20);
         this.pathField = new EditBox(this.font, editStartX, startY, pathFieldWidth, 18, PATH_LABEL);
         this.pathField.setValue(cfg.sourcePath);
-        this.pathField.setMaxLength(32767); // effectively unlimited for any realistic file path/URL
+        this.pathField.setMaxLength(32767);
         if (!cfg.sourcePath.isBlank()) this.pathField.setTooltip(Tooltip.create(Component.literal(cfg.sourcePath)));
         this.pathField.setResponder(this::onPathFieldChanged);
         this.addRenderableWidget(this.pathField);
-        this.addRenderableWidget(Button.builder(Component.translatable("config.mirahud.browse"), b -> openFilePicker())
+        this.addRenderableWidget(Button.builder(Component.translatable(TranslationsKeys.CONFIG_BROWSE), b -> openFilePicker())
                 .bounds(editStartX + pathFieldWidth + 5, startY, browseButtonWidth, 18).build());
         startY += rowHeight + 6;
 
-        // ---- Position & Size ----
         this.posXField = makeIntField(editStartX, startY, 60, cfg.posX, OverlayConfigScreen::isInteger);
         this.posXField.setResponder(v -> { if (!updatingFields) cfg.posX = parseInt(v, cfg.posX); });
         this.posYField = makeIntField(editStartX + 65, startY, 60, cfg.posY, OverlayConfigScreen::isInteger);
@@ -178,25 +172,22 @@ public class OverlayConfigScreen extends Screen {
         this.heightField.setResponder(this::onHeightFieldChanged);
         startY += rowHeight + 6;
 
-        // ---- Opacity ----
         this.opacitySlider = new AbstractSliderButton(editStartX, startY, 295, 18, OPACITY_LABEL, cfg.opacity) {
-            @Override protected void updateMessage() { setMessage(Component.translatable("config.mirahud.opacity_value", (int)(this.value * 100))); }
+            @Override protected void updateMessage() { setMessage(Component.translatable(TranslationsKeys.CONFIG_OPACITY_VALUE, (int)(this.value * 100))); }
             @Override protected void applyValue() { selectedConfig().opacity = (float) this.value; }
         };
         this.addRenderableWidget(this.opacitySlider);
         startY += rowHeight + 6;
 
-        // ---- Volume (video only) ----
         if (cfg.isVideo()) {
             this.volumeSlider = new AbstractSliderButton(editStartX, startY, 295, 18, VOLUME_LABEL, cfg.volume) {
-                @Override protected void updateMessage() { setMessage(Component.translatable("config.mirahud.volume_value", (int)(this.value * 100))); }
+                @Override protected void updateMessage() { setMessage(Component.translatable(TranslationsKeys.CONFIG_VOLUME_VALUE, (int)(this.value * 100))); }
                 @Override protected void applyValue() { selectedConfig().volume = (float) this.value; }
             };
             this.addRenderableWidget(this.volumeSlider);
             startY += rowHeight + 6;
         }
 
-        // ---- Play/Pause + Loop (video only) ----
         if (cfg.isVideo()) {
             Button ppBtn = Button.builder(playPauseLabel(cfg), btn -> { cfg.playing = !cfg.playing; btn.setMessage(playPauseLabel(cfg)); })
                     .bounds(editStartX, startY, 145, 18).build();
@@ -207,7 +198,6 @@ public class OverlayConfigScreen extends Screen {
             startY += rowHeight + 6;
         }
 
-        // ---- Anchor + Lock aspect ----
         Button anchorBtn = Button.builder(anchorLabel(cfg), btn -> { cfg.anchor = nextAnchor(cfg.anchor); btn.setMessage(anchorLabel(cfg)); })
                 .bounds(editStartX, startY, 145, 18).build();
         this.addRenderableWidget(anchorBtn);
@@ -216,32 +206,25 @@ public class OverlayConfigScreen extends Screen {
         this.addRenderableWidget(lockBtn);
         startY += rowHeight + 6;
 
-        // ---- Drag mode ----
-        Button dragBtn = Button.builder(Component.translatable("config.mirahud.drag_mode"), b -> enterDragMode())
+        Button dragBtn = Button.builder(Component.translatable(TranslationsKeys.CONFIG_DRAG_MODE), b -> enterDragMode())
                 .bounds(editStartX, startY, 295, 18)
-                .tooltip(Tooltip.create(Component.translatable("config.mirahud.drag_mode_tooltip"))).build();
+                .tooltip(Tooltip.create(Component.translatable(TranslationsKeys.CONFIG_DRAG_MODE_TOOLTIP))).build();
         this.addRenderableWidget(dragBtn);
         startY += rowHeight + 10;
 
-        // ---- Preset controls ----
-        this.presetNameField = new EditBox(this.font, editStartX, startY, 140, 18, Component.translatable("config.mirahud.preset_name"));
+        this.presetNameField = new EditBox(this.font, editStartX, startY, 140, 18, Component.translatable(TranslationsKeys.CONFIG_PRESET_NAME));
         this.presetNameField.setMaxLength(32);
         this.addRenderableWidget(this.presetNameField);
-        this.addRenderableWidget(Button.builder(Component.translatable("config.mirahud.save_preset"), b -> savePreset()).bounds(editStartX + 145, startY, 60, 18).build());
-        this.addRenderableWidget(Button.builder(Component.translatable("config.mirahud.delete_preset"), b -> deletePreset()).bounds(editStartX + 210, startY, 60, 18).build());
+        this.addRenderableWidget(Button.builder(Component.translatable(TranslationsKeys.CONFIG_SAVE_PRESET), b -> savePreset()).bounds(editStartX + 145, startY, 60, 18).build());
+        this.addRenderableWidget(Button.builder(Component.translatable(TranslationsKeys.CONFIG_DELETE_PRESET), b -> deletePreset()).bounds(editStartX + 210, startY, 60, 18).build());
         startY += rowHeight + 6;
-        this.addRenderableWidget(Button.builder(Component.translatable("config.mirahud.load_prev"), b -> loadPreset(-1)).bounds(editStartX, startY, 100, 18).build());
-        this.addRenderableWidget(Button.builder(Component.translatable("config.mirahud.load_next"), b -> loadPreset(1)).bounds(editStartX + 105, startY, 100, 18).build());
+        this.addRenderableWidget(Button.builder(Component.translatable(TranslationsKeys.CONFIG_LOAD_PREV), b -> loadPreset(-1)).bounds(editStartX, startY, 100, 18).build());
+        this.addRenderableWidget(Button.builder(Component.translatable(TranslationsKeys.CONFIG_LOAD_NEXT), b -> loadPreset(1)).bounds(editStartX + 105, startY, 100, 18).build());
         startY += rowHeight + 10;
 
-        // Browse button is now placed next to the source path field above
-
-        // ---- Done / Cancel ----
         this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).bounds(editStartX, startY, 145, 18).build());
         this.addRenderableWidget(Button.builder(CommonComponents.GUI_CANCEL, b -> onCancel()).bounds(editStartX + 150, startY, 145, 18).build());
     }
-
-    // ==================== Overlay management ====================
 
     private void selectOverlay(int idx) {
         if (idx < 0 || idx >= overlayConfigs.size()) return;
@@ -265,8 +248,6 @@ public class OverlayConfigScreen extends Screen {
         if (selectedIndex < 0 || selectedIndex >= overlayConfigs.size()) return null;
         return overlayConfigs.get(selectedIndex);
     }
-
-    // ==================== Responders ====================
 
     private void onPathFieldChanged(String value) {
         if (updatingFields) return;
@@ -312,14 +293,12 @@ public class OverlayConfigScreen extends Screen {
     }
     private void invalidatePreviewCache() { cachedPreviewWidth = -1; }
 
-    // ==================== Drag mode ====================
     private void enterDragMode() { syncAllFieldsToConfig(); dragMode = true; dragging = false; }
     private void exitDragMode() { dragMode = false; dragging = false; }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (dragMode) { renderDragMode(graphics); return; }
-        // Render preview BEFORE widgets so it sits under everything (buttons, fields, labels)
         renderPreview(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
         graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 8, 0xFFFFFFFF, true);
@@ -348,9 +327,9 @@ public class OverlayConfigScreen extends Screen {
         graphics.renderOutline(cx - 6, cy - 1, 12, 2, 0xFFFFFFFF);
         int lg = font.lineHeight + 4, bh = lg * 3, ty = ay + cfg.height + 8;
         if (ty + bh > this.height - 4) ty = Math.max(4, ay - bh - 8);
-        Component hint = Component.translatable("config.mirahud.drag_hint");
-        Component rch = Component.translatable("config.mirahud.drag_recenter_hint");
-        Component info = Component.translatable("config.mirahud.drag_position_info", cfg.posX, cfg.posY, cfg.width, cfg.height, Component.translatable(cfg.anchor.getTranslationKey()));
+        Component hint = Component.translatable(TranslationsKeys.CONFIG_DRAG_HINT);
+        Component rch = Component.translatable(TranslationsKeys.CONFIG_DRAG_RECENTER_HINT);
+        Component info = Component.translatable(TranslationsKeys.CONFIG_DRAG_POSITION_INFO, cfg.posX, cfg.posY, cfg.width, cfg.height, Component.translatable(cfg.anchor.getTranslationKey()));
         graphics.drawString(font, hint, (width - font.width(hint)) / 2, ty, 0xFFFFFFFF, true);
         graphics.drawString(font, rch, (width - font.width(rch)) / 2, ty + lg, 0xFFFFFFFF, true);
         graphics.drawString(font, info, (width - font.width(info)) / 2, ty + lg * 2, 0xFFFFFFFF, true);
@@ -374,7 +353,6 @@ public class OverlayConfigScreen extends Screen {
         }
     }
 
-    // ---- Input ----
     @Override public boolean keyPressed(KeyEvent event) {
         if (dragMode) { int k = event.key(); if (k == InputConstants.KEY_ESCAPE || k == InputConstants.KEY_RETURN || k == InputConstants.KEY_NUMPADENTER) { exitDragMode(); return true; } return true; }
         return super.keyPressed(event);
@@ -447,7 +425,6 @@ public class OverlayConfigScreen extends Screen {
     }
     private static int clamp(int max, int min, int v) { return Math.max(min, Math.min(v, max)); }
 
-    // ---- File picker ----
     private static final List<String> IMAGE_EXTS = List.of("png", "jpg", "jpeg", "webp", "tga", "bmp", "gif");
     private static final List<String> VIDEO_EXTS = List.of("mp4", "mkv", "webm", "avi", "mov", "flv", "wmv");
 
@@ -455,13 +432,11 @@ public class OverlayConfigScreen extends Screen {
         OverlayConfig cfg = selectedConfig(); if (cfg == null) return;
         if (!pickerOpen.compareAndSet(false, true)) {
             SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-                    Component.translatable("config.mirahud.picker_already_open_title"),
-                    Component.translatable("config.mirahud.picker_already_open_message"));
+                    Component.translatable(TranslationsKeys.CONFIG_PICKER_ALREADY_OPEN_TITLE),
+                    Component.translatable(TranslationsKeys.CONFIG_PICKER_ALREADY_OPEN_MESSAGE));
             return;
         }
 
-        // Run the native dialog on a background thread so the render thread
-        // (and thus the whole game) doesn't freeze while the dialog is open.
         Thread pickerThread = new Thread(() -> {
             try {
                 runFilePicker(cfg);
@@ -478,7 +453,6 @@ public class OverlayConfigScreen extends Screen {
         boolean isVideo = cfg.isVideo();
         String path = null;
 
-        // Try LWJGL TinyFileDialogs
         String pickedPath = null;
         try (MemoryStack stack = MemoryStack.stackPush()) {
             List<String> wildcardExts = new ArrayList<>();
@@ -486,11 +460,12 @@ public class OverlayConfigScreen extends Screen {
             PointerBuffer filters = stack.mallocPointer(wildcardExts.size());
             for (String ext : wildcardExts) filters.put(stack.UTF8(ext));
             filters.flip();
+            Language language = Language.getInstance();
             pickedPath = TinyFileDialogs.tinyfd_openFileDialog(
-                    "Select " + (isVideo ? "Video" : "Image"),
+                    language.getOrDefault(isVideo ? TranslationsKeys.CONFIG_FILE_DIALOG_SELECT_VIDEO : TranslationsKeys.CONFIG_FILE_DIALOG_SELECT_IMAGE),
                     System.getProperty("user.home"),
                     filters,
-                    isVideo ? "Media Files" : "Image Files",
+                    language.getOrDefault(isVideo ? TranslationsKeys.CONFIG_FILE_DIALOG_FILTER_MEDIA : TranslationsKeys.CONFIG_FILE_DIALOG_FILTER_IMAGE),
                     false
             );
             MiraHUD.LOGGER.info("TinyFileDialogs picked: {}", pickedPath);
@@ -498,7 +473,6 @@ public class OverlayConfigScreen extends Screen {
             MiraHUD.LOGGER.error("TinyFileDialogs file picker failed", t);
         }
 
-        // Validate result on the render thread
         final String finalPath = pickedPath;
         Minecraft.getInstance().execute(() -> handlePickedPath(cfg, finalPath));
     }
@@ -510,8 +484,8 @@ public class OverlayConfigScreen extends Screen {
             } else {
                 MiraHUD.LOGGER.warn("No valid file was picked");
                 SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-                        Component.translatable("config.mirahud.paste_path_hint_title"),
-                        Component.translatable("config.mirahud.paste_path_hint_message"));
+                        Component.translatable(TranslationsKeys.CONFIG_PASTE_PATH_HINT_TITLE),
+                        Component.translatable(TranslationsKeys.CONFIG_PASTE_PATH_HINT_MESSAGE));
             }
         } finally {
             pickerOpen.set(false);
@@ -543,7 +517,6 @@ public class OverlayConfigScreen extends Screen {
         }
     }
 
-    // ---- Aspect ratio ----
     private void syncHeightToWidth() {
         OverlayConfig cfg = selectedConfig(); if (cfg == null || widthField == null || heightField == null) return;
         int w = parseInt(widthField.getValue(), cfg.width), h = computeHeightForWidth(w);
@@ -565,21 +538,20 @@ public class OverlayConfigScreen extends Screen {
         return (ow <= 0 || oh <= 0) ? -1 : Math.max(1, Math.round(h * ((float)ow / oh)));
     }
 
-    // ---- Presets ----
     private void savePreset() {
         if (presetNameField == null) return;
         String name = presetNameField.getValue(); OverlayConfig cfg = selectedConfig();
         if (name.isBlank() || cfg == null) return;
         if (OverlayPresetManager.savePreset(name, cfg)) {
             presetNameField.setValue("");
-            SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable("config.mirahud.preset_saved_title"), Component.literal(name));
+            SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable(TranslationsKeys.CONFIG_PRESET_SAVED_TITLE), Component.literal(name));
         }
     }
     private void deletePreset() {
         if (presetNameField == null) return;
         String name = presetNameField.getValue(); if (name.isBlank()) return;
         OverlayPresetManager.deletePreset(name); presetNameField.setValue("");
-        SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable("config.mirahud.preset_deleted_title"), Component.literal(name));
+        SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable(TranslationsKeys.CONFIG_PRESET_DELETED_TITLE), Component.literal(name));
     }
     private void loadPreset(int dir) {
         java.util.List<String> names = OverlayPresetManager.getPresetNames(); if (names.isEmpty()) return;
@@ -604,7 +576,6 @@ public class OverlayConfigScreen extends Screen {
 
     @Override public void onClose() {
         syncAllFieldsToConfig();
-        // Normalize all source paths before saving
         for (OverlayConfig cfg : overlayConfigs) {
             if (!cfg.sourcePath.isBlank()) {
                 cfg.sourcePath = FilePathUtil.resolve(cfg.sourcePath);
@@ -639,13 +610,12 @@ public class OverlayConfigScreen extends Screen {
         eb.setValue(String.valueOf(val)); eb.setFilter(filter); this.addRenderableWidget(eb); return eb;
     }
 
-    // ---- Labels ----
-    private Component enabledLabel(OverlayConfig c) { return Component.translatable(c.enabled ? "config.mirahud.enabled_on" : "config.mirahud.enabled_off"); }
-    private Component anchorLabel(OverlayConfig c) { return Component.translatable("config.mirahud.anchor_value", Component.translatable(c.anchor.getTranslationKey())); }
-    private Component lockAspectLabel(OverlayConfig c) { return Component.translatable(c.lockAspectRatio ? "config.mirahud.lock_aspect_on" : "config.mirahud.lock_aspect_off"); }
-    private Component mediaTypeLabel(OverlayConfig c) { return Component.translatable("config.mirahud.media_type_value", Component.translatable("config.mirahud.media_type_" + c.mediaType)); }
-    private Component playPauseLabel(OverlayConfig c) { return Component.translatable(c.playing ? "config.mirahud.pause" : "config.mirahud.play"); }
-    private Component loopLabel(OverlayConfig c) { return Component.translatable(c.loop ? "config.mirahud.loop_on" : "config.mirahud.loop_off"); }
+    private Component enabledLabel(OverlayConfig c) { return Component.translatable(c.enabled ? TranslationsKeys.CONFIG_ENABLED_ON : TranslationsKeys.CONFIG_ENABLED_OFF); }
+    private Component anchorLabel(OverlayConfig c) { return Component.translatable(TranslationsKeys.CONFIG_ANCHOR_VALUE, Component.translatable(c.anchor.getTranslationKey())); }
+    private Component lockAspectLabel(OverlayConfig c) { return Component.translatable(c.lockAspectRatio ? TranslationsKeys.CONFIG_LOCK_ASPECT_ON : TranslationsKeys.CONFIG_LOCK_ASPECT_OFF); }
+    private Component mediaTypeLabel(OverlayConfig c) { return Component.translatable(TranslationsKeys.CONFIG_MEDIA_TYPE_VALUE, Component.translatable("video".equals(c.mediaType) ? TranslationsKeys.CONFIG_MEDIA_TYPE_VIDEO : TranslationsKeys.CONFIG_MEDIA_TYPE_IMAGE)); }
+    private Component playPauseLabel(OverlayConfig c) { return Component.translatable(c.playing ? TranslationsKeys.CONFIG_PAUSE : TranslationsKeys.CONFIG_PLAY); }
+    private Component loopLabel(OverlayConfig c) { return Component.translatable(c.loop ? TranslationsKeys.CONFIG_LOOP_ON : TranslationsKeys.CONFIG_LOOP_OFF); }
 
     private static OverlayConfig.Anchor nextAnchor(OverlayConfig.Anchor cur) { OverlayConfig.Anchor[] v = OverlayConfig.Anchor.values(); return v[(cur.ordinal() + 1) % v.length]; }
     private static String nextMediaType(String cur) { return switch (cur) { case "image" -> "video"; default -> "image"; }; }

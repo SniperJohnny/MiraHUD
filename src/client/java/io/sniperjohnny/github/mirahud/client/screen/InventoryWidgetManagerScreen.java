@@ -1,6 +1,7 @@
 package io.sniperjohnny.github.mirahud.client.screen;
 
 import io.sniperjohnny.github.mirahud.client.config.inventoryconfig.InventoryConfigManager;
+import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -17,78 +18,60 @@ public class InventoryWidgetManagerScreen extends Screen {
     }
         @Override
         protected void init() {
-        /*
-        CustomWidget customWidget = new CustomWidget(0, 0, 32, 32, () -> {
-
-        }, "textures/widget_icons/trashcan.png");
-        this.addRenderableWidget(customWidget);
-
-         */
-            Button renderInventoryOverlayButton = Button.builder(Component.literal("Render Inventory overlay"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button renderInventoryOverlayButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_INVENTORY_OVERLAY), (btn) -> {
                 InventoryConfigManager.getConfig().showInventoryHud = !InventoryConfigManager.getConfig().showInventoryHud;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().showInventoryHud ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render InventoryWidgets " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_INVENTORY_OVERLAY,
+                        Component.translatable(InventoryConfigManager.getConfig().showInventoryHud ? "options.on" : "options.off")), false);
 
             }).bounds(40, 30, 200, 20).build();
 
 
-            Button renderEnderchestWidgetButton = Button.builder(Component.literal("Render Enderchest Widget"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button renderEnderchestWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_ENDERCHEST_WIDGET), (btn) -> {
                 InventoryConfigManager.getConfig().ecWidgetwanted = !InventoryConfigManager.getConfig().ecWidgetwanted;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().ecWidgetwanted ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render Enderchest Widget " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_ENDERCHEST_WIDGET,
+                        Component.translatable(InventoryConfigManager.getConfig().ecWidgetwanted ? "options.on" : "options.off")), false);
 
             }).bounds(40, 55, 200, 20).build();
 
-            Button renderahWidgetButton = Button.builder(Component.literal("Render Auctionhouse Widget"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button renderahWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_AUCTIONHOUSE_WIDGET), (btn) -> {
                 InventoryConfigManager.getConfig().ahWidgetwanted = !InventoryConfigManager.getConfig().ahWidgetwanted;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().ahWidgetwanted ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render Auctionhouse Widget " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_AUCTIONHOUSE_WIDGET,
+                        Component.translatable(InventoryConfigManager.getConfig().ahWidgetwanted ? "options.on" : "options.off")), false);
 
             }).bounds(40, 80, 200, 20).build();
 
 
-            Button rendersellWidgetButton = Button.builder(Component.literal("Render Sell Widget"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button rendersellWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_SELL_WIDGET), (btn) -> {
                 InventoryConfigManager.getConfig().sellWidgetwanted = !InventoryConfigManager.getConfig().sellWidgetwanted;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().sellWidgetwanted ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render Auctionhouse Widget " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_SELL_WIDGET,
+                        Component.translatable(InventoryConfigManager.getConfig().sellWidgetwanted ? "options.on" : "options.off")), false);
 
             }).bounds(40, 105, 200, 20).build();
-            Button rendertrashWidgetButton = Button.builder(Component.literal("Render Trash Widget"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button rendertrashWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_TRASH_WIDGET), (btn) -> {
                 InventoryConfigManager.getConfig().trashWidgetwanted = !InventoryConfigManager.getConfig().trashWidgetwanted;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().trashWidgetwanted ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render Trash Widget " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_TRASH_WIDGET,
+                        Component.translatable(InventoryConfigManager.getConfig().trashWidgetwanted ? "options.on" : "options.off")), false);
 
             }).bounds(40, 130, 200, 20).build();
-            Button rendershopWidgetButton = Button.builder(Component.literal("Render Trash Widget"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button rendershopWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_SHOP_WIDGET), (btn) -> {
                 InventoryConfigManager.getConfig().shopWidgetwanted = !InventoryConfigManager.getConfig().shopWidgetwanted;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().shopWidgetwanted ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render Shop Widget " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_SHOP_WIDGET,
+                        Component.translatable(InventoryConfigManager.getConfig().shopWidgetwanted ? "options.on" : "options.off")), false);
 
             }).bounds(40, 155, 200, 20).build();
-            Button rendermarketWidgetButton = Button.builder(Component.literal("Render Trash Widget"), (btn) -> {
-                // When the button is clicked, we can display a toast to the screen.
+            Button rendermarketWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_MARKET_WIDGET), (btn) -> {
                 InventoryConfigManager.getConfig().marketWidgetwanted = !InventoryConfigManager.getConfig().marketWidgetwanted;
                 InventoryConfigManager.save();
-                String renderhudtext = InventoryConfigManager.getConfig().marketWidgetwanted ? "True" : "False";
-                this.minecraft.player.displayClientMessage(Component.literal("Render Market Widget " + renderhudtext), false);
+                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_MARKET_WIDGET,
+                        Component.translatable(InventoryConfigManager.getConfig().marketWidgetwanted ? "options.on" : "options.off")), false);
 
-            }).bounds(40, 155, 200, 20).build();
-
-
-
-
+            }).bounds(40, 180, 200, 20).build();
 
             List<Button> buttons = new ArrayList<>();
             buttons.add(rendertrashWidgetButton);
@@ -98,10 +81,6 @@ public class InventoryWidgetManagerScreen extends Screen {
             buttons.add(renderInventoryOverlayButton);
             buttons.add(rendershopWidgetButton);
             buttons.add(rendermarketWidgetButton);
-            // x, y, width, height
-            // It's recommended to use the fixed height of 20 to prevent rendering issues with the button
-            // textures.
-            // Register the button widget.
             for(Button renderbutton : buttons) {
                 this.addRenderableWidget(renderbutton);
             }
@@ -109,17 +88,11 @@ public class InventoryWidgetManagerScreen extends Screen {
         @Override
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
             super.render(graphics, mouseX, mouseY, delta);
-            // Minecraft doesn't have a "label" widget, so we'll have to draw our own text.
-            // We'll subtract the font height from the Y position to make the text appear above the button.
-            // Subtracting an extra 10 pixels will give the text some padding.
-            // textRenderer, text, x, y, color, hasShadow
-            //graphics.drawString(this.font, "Special Button", 40, 40 - this.font.lineHeight - 10, 0xFFFFFFFF, true);
+            graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 10, 0xFFFFFFFF, true);
         }
 
         @Override
         public void onClose() {
             this.minecraft.setScreen(this.parent);
-
         }
     }
-

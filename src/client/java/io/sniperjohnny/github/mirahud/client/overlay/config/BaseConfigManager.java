@@ -10,23 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 
-/**
- * Generic JSON config manager that any part of the mod can use to persist settings.
- * <p>
- * Usage:
- * <pre>{@code
- *   BaseConfigManager<MyConfig> manager = new BaseConfigManager<>(
- *       MyConfig.class,
- *       "my_config.json",
- *       MyConfig::new
- *   );
- *   MyConfig cfg = manager.getConfig();
- *   cfg.someField = 42;
- *   manager.save();
- * }</pre>
- *
- * @param <T> the config POJO type (must have a no-arg constructor for Gson)
- */
 public class BaseConfigManager<T> {
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
@@ -37,11 +20,6 @@ public class BaseConfigManager<T> {
     private final Supplier<T> defaultSupplier;
     private T config;
 
-    /**
-     * @param configClass     the class object for deserialization
-     * @param configFileName  file name placed inside {@code config/<modid>/configs/}
-     * @param defaultSupplier factory for a default config instance
-     */
     public BaseConfigManager(Class<T> configClass, String configFileName, Supplier<T> defaultSupplier) {
         this.configClass = configClass;
         this.configPath = FabricLoader.getInstance()
@@ -52,9 +30,6 @@ public class BaseConfigManager<T> {
         this.defaultSupplier = defaultSupplier;
     }
 
-    /**
-     * Alternate constructor accepting an explicit config path for backward compatibility.
-     */
     public BaseConfigManager(Class<T> configClass, Path configPath, Supplier<T> defaultSupplier) {
         this.configClass = configClass;
         this.configPath = configPath;
@@ -91,13 +66,11 @@ public class BaseConfigManager<T> {
         }
     }
 
-    /** Forces a reload from disk, discarding unsaved changes. */
     public void reload() {
         config = null;
         load();
     }
 
-    /** Replace the in-memory config (e.g. restoring from a preset). */
     public void setConfig(T newConfig) {
         this.config = newConfig;
     }

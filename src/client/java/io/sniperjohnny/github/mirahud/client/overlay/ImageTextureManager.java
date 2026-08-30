@@ -17,31 +17,22 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Manages static image textures. Each overlay gets its own instance with a
- * unique texture identifier so multiple image overlays can render simultaneously.
- */
 public class ImageTextureManager implements MediaProvider {
     private static final Map<String, ImageTextureManager> INSTANCES = new ConcurrentHashMap<>();
 
-    /** Get or create a manager for a specific overlay (keyed by overlays config id). */
     public static ImageTextureManager forOverlay(String overlayId) {
         return INSTANCES.computeIfAbsent(overlayId, ImageTextureManager::new);
     }
 
-    /** Remove and cleanup a previously created manager. */
     public static void removeOverlay(String overlayId) {
         ImageTextureManager mgr = INSTANCES.remove(overlayId);
         if (mgr != null) mgr.cleanup();
     }
 
-    /** Clean up all instances (called on mod shutdown). */
     public static void cleanupAll() {
         for (ImageTextureManager mgr : INSTANCES.values()) mgr.cleanup();
         INSTANCES.clear();
     }
-
-    // ---- Instance fields ----
 
     private final Identifier textureId;
     private DynamicTexture currentTexture;
@@ -55,8 +46,6 @@ public class ImageTextureManager implements MediaProvider {
                 MiraHUD.MOD_ID, "img_overlay_" + overlayId.replace("-", "_")
         );
     }
-
-    // ---- MediaProvider implementation ----
 
     @Override
     public Identifier getTextureId() { return textureId; }
@@ -83,9 +72,6 @@ public class ImageTextureManager implements MediaProvider {
         }
         if (source.equals(currentSource)) return true;
 
-        // Resolve exactly like the video provider does, so relative paths and
-        // files outside the game directory (Downloads, Desktop, ...) work —
-        // not just files relative to the game folder (screenshots).
         String resolved = FilePathUtil.resolve(source);
         Path filePath = Path.of(resolved);
         if (!Files.exists(filePath)) {
@@ -107,27 +93,17 @@ public class ImageTextureManager implements MediaProvider {
         originalHeight = image.getHeight();
         currentTexture = new DynamicTexture(textureId::toString, image);
         Minecraft.getInstance().getTextureManager().register(textureId, currentTexture);
-        // Store the RAW source for the render loop's identity check (like
-        // VideoTextureManager). FilePathUtil resolves at load time only.
         currentSource = source;
         lastFailedSource = null;
         return true;
     }
 
-    /**
-     * Decode an image file into a NativeImage.
-     * <p>
-     * Fast path: vanilla {@link NativeImage#read(InputStream)} (PNG/JPEG).
-     * Fallback: ask FFmpeg (already bundled for video) to transcode any other
-     * format — WEBP, TGA, BMP, GIF, AVIF, ... — to PNG, then decode that. This
-     * is what makes downloaded web images show up, not just game screenshots.
-     */
     private NativeImage loadImage(Path filePath) {
         try (InputStream in = Files.newInputStream(filePath)) {
             NativeImage image = NativeImage.read(in);
             if (image != null) return image;
-        } catch (IOException e) {
-            // Unsupported/undecodable format (or IO error) — try FFmpeg below.
+        } catch (IOException ignored) {
+            // Unsupported format — fall back to FFmpeg decode below.
         }
 
         if (!ExternalToolManager.isFfmpegAvailable()) {
@@ -149,17 +125,11 @@ public class ImageTextureManager implements MediaProvider {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             Process p = ExternalToolManager.startWithRetry(pb);
 
-            // Drain stdout CONCURRENTLY with the process: FFmpeg blocks writing
-            // the PNG to the pipe once the OS pipe buffer fills, and a PNG is
-            // almost always larger than that buffer. Reading only after
-            // waitFor() would deadlock until the timeout — so a daemon thread
-            // drains while we wait.
             final byte[][] pngRef = new byte[1][];
             Thread drain = new Thread(() -> {
                 try (InputStream in = p.getInputStream()) {
                     pngRef[0] = in.readAllBytes();
                 } catch (IOException ignored) {
-                    // pipe closed by destroyForcibly() — handled below
                 }
             }, "Image-Decode-" + textureId.getPath());
             drain.setDaemon(true);

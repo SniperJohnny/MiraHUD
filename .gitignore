@@ -31,7 +31,11 @@ bin/
 # fabric
 
 run/
+
+
+#Unrelated Files not meant for github
 session.md
+tools
 
 # java
 

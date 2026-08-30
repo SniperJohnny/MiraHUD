@@ -1,5 +1,6 @@
 package io.sniperjohnny.github.mirahud.client.screen;
 
+import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.toasts.SystemToast;
@@ -14,38 +15,23 @@ public class CustomScreen extends Screen {
     }
     @Override
     protected void init() {
-        /*
-        CustomWidget customWidget = new CustomWidget(0, 0, 32, 32, () -> {
-
-        }, "textures/widget_icons/trashcan.png");
-        this.addRenderableWidget(customWidget);
-
-         */
-        Button buttonWidget = Button.builder(Component.literal("Hello World"), (btn) -> {
-            // When the button is clicked, we can display a toast to the screen.
+        Button buttonWidget = Button.builder(Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_BUTTON), (btn) -> {
             this.minecraft.getToastManager().addToast(
-                    SystemToast.multiline(this.minecraft, SystemToast.SystemToastId.NARRATOR_TOGGLE, Component.nullToEmpty("Hello World!"), Component.nullToEmpty("This is a toast."))
+                    SystemToast.multiline(this.minecraft, SystemToast.SystemToastId.NARRATOR_TOGGLE,
+                            Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_TOAST_TITLE),
+                            Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_TOAST_MESSAGE))
             );
         }).bounds(40, 40, 120, 20).build();
-        // x, y, width, height
-        // It's recommended to use the fixed height of 20 to prevent rendering issues with the button
-        // textures.
-        // Register the button widget.
         this.addRenderableWidget(buttonWidget);
     }
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         super.render(graphics, mouseX, mouseY, delta);
-        // Minecraft doesn't have a "label" widget, so we'll have to draw our own text.
-        // We'll subtract the font height from the Y position to make the text appear above the button.
-        // Subtracting an extra 10 pixels will give the text some padding.
-        // textRenderer, text, x, y, color, hasShadow
-        graphics.drawString(this.font, "Special Button", 40, 40 - this.font.lineHeight - 10, 0xFFFFFFFF, true);
+        graphics.drawString(this.font, Component.translatable(TranslationsKeys.SCREEN_SPECIAL_BUTTON), 40, 40 - this.font.lineHeight - 10, 0xFFFFFFFF, true);
     }
 
     @Override
     public void onClose() {
         this.minecraft.setScreen(this.parent);
-
     }
 }

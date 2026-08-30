@@ -2,8 +2,8 @@ package io.sniperjohnny.github.mirahud.client.overlay;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import io.sniperjohnny.github.mirahud.MiraHUD;
-import io.sniperjohnny.github.mirahud.client.config.MasterConfigManager;
 import io.sniperjohnny.github.mirahud.client.overlay.config.FilePathUtil;
+import io.sniperjohnny.github.mirahud.client.overlay.config.VideoConfigManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -27,28 +27,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Plays local video files (MP4, MKV, etc.) via external FFmpeg processes.
- * <p>
- * Uses a raw RGBA pipe from FFmpeg.  Frames are uploaded to a
- * {@link DynamicTexture} using the modern texture API:
- * {@link DynamicTexture#setPixels(NativeImage)} + {@link DynamicTexture#upload()}.
- * No raw GL calls, no reflection, no accessor mixins.
- * <p>
- * In 1.21.11 {@link DynamicTexture#upload()} always re-uploads the NativeImage
- * backing memory to the GPU (CommandEncoder.writeToTexture → glTexSubImage2D
- * reading {@code NativeImage.getPointer()}), so in-place writes to the shared
- * NativeImage are picked up every frame. Calling {@code setPixels()} per frame
- * would instead FREE the reused NativeImage (it closes the previous image).
- * <p>
- * <b>A/V sync:</b> the video FFmpeg process decodes at max speed (no {@code -re}
- * — {@code -re} throttles on Windows pipes and lets the video race ahead of the
- * audio). The audio stream is the master clock (real-time). The frame reader
- * holds each decoded frame until the audio playback position reaches that
- * frame's presentation timestamp, obtained in-band from FFmpeg's
- * {@code showinfo} filter on stderr. If timestamps are unavailable, or the
- * video has no audio, plain FPS pacing is used as a fallback.
- */
 public class VideoTextureManager implements MediaProvider {
     private final Identifier textureId;
     private final String overlayId;
@@ -56,9 +34,7 @@ public class VideoTextureManager implements MediaProvider {
     private DynamicTexture dynTexture;
     private NativeImage nativeImage;
     private String currentSource;
-    /** Resolved path of the currently-loaded source (needed for seek/restart after cleanup). */
     private String lastResolvedSource;
-    /** Seek offset to apply on the next pipeline start (0 = from beginning). */
     private volatile double seekPosition;
     private int originalWidth;
     private int originalHeight;
@@ -74,50 +50,28 @@ public class VideoTextureManager implements MediaProvider {
     private final Object frameLock = new Object();
     private volatile boolean frameReady = false;
     private volatile float volume = 1.0f;
-    /** True when the video played to its end (clean EOF after frames were read). */
     private volatile boolean finishedNaturally = false;
-    /** When true, auto-restart from beginning after natural EOF. Set by the render loop from OverlayConfig. */
     private volatile boolean loop = false;
-    /** Video frame rate (fps), probed via ffprobe. 0 if unknown. */
     private volatile double videoFps = 0;
 
-    /** Direct byte buffer filled by the reader thread. */
     private ByteBuffer rgbaBuffer;
-    /** Working buffer for reading from the stream. */
     private byte[] readBuffer;
-    /** Resolution of the currently-allocated GPU texture (0 = none). Used to
-     *  reuse the texture across same-source restarts (seek/loop). */
     private int textureWidth = 0;
     private int textureHeight = 0;
 
-    // ---- Frame-timestamp capture (FFmpeg showinfo on stderr) ----
-
-    /** Matches showinfo's frame counter: "n:   0" (0-based, output frame order). */
     private static final Pattern FRAME_N_PATTERN = Pattern.compile("n:\\s*(\\d+)");
-    /** Matches showinfo's presentation time: "pts_time:12.345". */
     private static final Pattern PTS_PATTERN = Pattern.compile("pts_time:(-?[0-9]+(?:\\.[0-9]+)?)");
 
     private record PtsEntry(int frameIndex, double ptsTime) {}
 
-    /** Per-frame presentation timestamps in output order (fed by the stderr thread). */
     private volatile ConcurrentLinkedQueue<PtsEntry> ptsQueue = new ConcurrentLinkedQueue<>();
-    /** False once PTS capture proves unavailable → permanent frame-count pacing. */
     private volatile boolean usePts = true;
-    /** Consecutive pts-miss counter (only touched by the frame reader thread). */
     private int ptsMissCount = 0;
-    /** Give up on per-frame PTS after this many consecutive misses (~0.6s). */
     private static final int PTS_MISS_LIMIT = 6;
-    /** How long {@link #pollPts} waits for the stderr thread to deliver a frame's pts. */
     private static final long PTS_POLL_NS = 100_000_000L;
-    /** pts of the first output frame — subtracted from every pts so the video clock
-     *  starts at 0 (matching the audio clock when it becomes audible), regardless of
-     *  the container's start offset or demuxer flags. Only touched by the stderr thread. */
+    private static final double AUDIO_SYNC_TOLERANCE_S = 0.005;
     private double firstPts = Double.NaN;
-    /** Wall-clock anchor (monotonic) for the first decoded frame — drives the fallback
-     *  pacing while the audio line is not yet audible / for silent videos. */
     private long playbackStartNanos = 0;
-
-    // ==================== Constructor ====================
 
     public VideoTextureManager(String overlayId) {
         this.overlayId = overlayId;
@@ -125,8 +79,6 @@ public class VideoTextureManager implements MediaProvider {
                 MiraHUD.MOD_ID, "video_overlay_" + overlayId.replace("-", "_")
         );
     }
-
-    // ==================== MediaProvider ====================
 
     @Override public Identifier getTextureId() { return textureId; }
     @Override public boolean hasTexture() { return dynTexture != null; }
@@ -136,21 +88,12 @@ public class VideoTextureManager implements MediaProvider {
     @Override public boolean isVideo() { return true; }
     @Override public boolean isPlaying() { return playing.get(); }
 
-    /**
-     * @return true while the FFmpeg pipeline is still alive (not crashed/EOF).
-     *         A video that finished playing naturally also counts as "alive" so
-     *         the render loop does NOT restart it — only a crash (EOF with zero
-     *         frames read) triggers the self-heal restart.
-     */
     @Override
     public boolean isAlive() {
-        // When loop is on and the video finished naturally, report "not alive"
-        // so the render loop auto-restarts it immediately.
         if (finishedNaturally && loop) return false;
         return running.get() || finishedNaturally;
     }
 
-    /** Set the loop flag (called from the render loop when config changes). */
     public void setLoop(boolean loop) {
         this.loop = loop;
     }
@@ -163,10 +106,6 @@ public class VideoTextureManager implements MediaProvider {
         if (resolved == null) return;
         MiraHUD.LOGGER.info("Seeking to {}s in {}", target, overlayId);
         seekPosition = target;
-        // Soft teardown: the FFmpeg processes/threads/audio die, but the GPU
-        // texture, native image and direct buffers survive — startFfmpeg reuses
-        // them because the source (and thus resolution) is unchanged, so the
-        // restart is seamless instead of flashing the overlay.
         teardown(true);
         currentSource = rawSource;
         lastResolvedSource = resolved;
@@ -187,7 +126,6 @@ public class VideoTextureManager implements MediaProvider {
         if (audioStreamer != null && audioStreamer.isActive()) {
             return audioStreamer.getPlaybackPositionSeconds() + seekPosition;
         }
-        // Fallback: wall-clock time since playback started + seek offset
         if (playbackStartNanos > 0) {
             return (System.nanoTime() - playbackStartNanos) / 1_000_000_000.0 + seekPosition;
         }
@@ -197,8 +135,6 @@ public class VideoTextureManager implements MediaProvider {
     @Override
     public boolean updateSource(String source) {
         if (source == null || source.isBlank()) { cleanup(); return true; }
-        // Identity check against the RAW config path so the render loop
-        // never sees a resolved-path mismatch and recreates this provider.
         if (source.equals(currentSource) && running.get()) return true;
 
         String resolved = FilePathUtil.resolve(source);
@@ -236,14 +172,12 @@ public class VideoTextureManager implements MediaProvider {
         }
     }
 
-    // ==================== FFmpeg ====================
-
     private void startFfmpeg(String source) throws IOException {
         if (!probeDimensions(source)) {
             throw new IOException("Failed to probe video dimensions for " + source);
         }
 
-        int maxHeight = MasterConfigManager.getConfig().maxVideoHeight;
+        int maxHeight = VideoConfigManager.getConfig().maxVideoHeight;
         boolean needsScale = maxHeight > 0 && originalHeight > maxHeight;
         if (needsScale) {
             float scale = (float) maxHeight / originalHeight;
@@ -255,15 +189,10 @@ public class VideoTextureManager implements MediaProvider {
         frameSize = originalWidth * originalHeight * 4;
 
         final int w = originalWidth, h = originalHeight;
-        // Reuse the existing texture + native image when the resolution is
-        // unchanged (seek/restart/loop) so restarts are seamless and don't
-        // churn the GPU. When called on the render thread (the normal case —
-        // seek keybinds, the render loop, config screens all run there) the
-        // texture is (re)created synchronously; otherwise it is deferred.
         Runnable createTexture = () -> {
             if (dynTexture != null && nativeImage != null
                     && textureWidth == w && textureHeight == h) {
-                return; // same resolution — reuse in place
+                return;
             }
             if (dynTexture != null) {
                 Minecraft.getInstance().getTextureManager().release(textureId);
@@ -275,10 +204,9 @@ public class VideoTextureManager implements MediaProvider {
             dynTexture = new DynamicTexture(textureId::toString, w, h, false);
             Minecraft.getInstance().getTextureManager().register(textureId, dynTexture);
 
-            // Create reusable NativeImage for per-frame uploads
             nativeImage = new NativeImage(NativeImage.Format.RGBA, w, h, false);
             dynTexture.setPixels(nativeImage);
-            // Upload initial (empty) pixels to initialize the GPU texture
+            // upload() re-uploads NativeImage memory each call, so per-frame writes in tick() are visible.
             dynTexture.upload();
             textureWidth = w;
             textureHeight = h;
@@ -289,34 +217,18 @@ public class VideoTextureManager implements MediaProvider {
             Minecraft.getInstance().execute(createTexture);
         }
 
-        // Reuse the direct buffers when the frame size is unchanged (restarts).
         if (rgbaBuffer == null || rgbaBuffer.capacity() != frameSize) {
             rgbaBuffer = ByteBuffer.allocateDirect(frameSize);
             readBuffer = new byte[frameSize];
         }
 
-        // --- Video process: raw RGBA ---
         List<String> vCmd = new ArrayList<>();
-        // loglevel info so the showinfo filter can report per-frame timestamps
-        // (the stderr thread below filters out everything except timestamps).
         vCmd.add(ExternalToolManager.ffmpegCommand()); vCmd.add("-loglevel"); vCmd.add("info");
-        // NOTE: -re is intentionally NOT used on the video process. -re paces the
-        // demuxer to wall clock, but (a) on Windows it throttles large rawvideo
-        // frames to a few fps through the pipe, and (b) it bursts through the
-        // first seconds of content at startup, letting the video race 2-3s ahead
-        // of the audio. The Java side now paces each frame to the audio clock
-        // using the frame's pts, so FFmpeg can decode at max speed safely.
-        if (MasterConfigManager.getConfig().ffmpegHardwareAccel) {
-            // Opt-in only: -hwaccel auto is known to crash on some Windows
-            // GPU/driver combos, so software decoding is the default.
+        if (VideoConfigManager.getConfig().ffmpegHardwareAccel) {
+            // Opt-in: -hwaccel auto crashes on some Windows GPU/driver combos.
             vCmd.add("-hwaccel"); vCmd.add("auto");
         }
-        // NOTE: only +discardcorrupt is used. +nobuffer is intentionally NOT used:
-        // with it, the demuxer skips the container's start-time normalization and
-        // reports the FIRST video frame at pts 2.0+ for MKVs (verified on a real
-        // episode file), which made the video wait ~3s for the audio clock to
-        // "catch up" at startup. parseShowInfo also normalizes pts to the first
-        // frame, so sync is immune to any remaining container offset either way.
+        // No -re here: the audio clock paces frames below; -re throttles the pipe and races startup.
         vCmd.add("-fflags"); vCmd.add("+discardcorrupt");
         if (seekPosition > 0) {
             vCmd.add("-ss"); vCmd.add(String.format(java.util.Locale.ROOT, "%.3f", seekPosition));
@@ -333,12 +245,8 @@ public class VideoTextureManager implements MediaProvider {
         vCmd.add("pipe:1");
 
         ProcessBuilder vPb = new ProcessBuilder(vCmd);
-        // stderr is left as a pipe: it carries the showinfo frame timestamps,
-        // which the parse thread below turns into the A/V sync clock. Real
-        // FFmpeg errors on it are still forwarded to the log.
         ffmpegVideoProcess = ExternalToolManager.startWithRetry(vPb);
 
-        // Parse stderr for per-frame presentation timestamps (showinfo lines).
         final ConcurrentLinkedQueue<PtsEntry> queue = new ConcurrentLinkedQueue<>();
         this.ptsQueue = queue;
         InputStream stderr = ffmpegVideoProcess.getErrorStream();
@@ -346,7 +254,6 @@ public class VideoTextureManager implements MediaProvider {
         ptsThread.setDaemon(true);
         ptsThread.start();
 
-        // --- Audio process ---
         List<String> aCmd = new ArrayList<>();
         aCmd.add(ExternalToolManager.ffmpegCommand()); aCmd.add("-loglevel"); aCmd.add("quiet");
         aCmd.add("-re");
@@ -368,8 +275,6 @@ public class VideoTextureManager implements MediaProvider {
         InputStream audioStream = new BufferedInputStream(ffmpegAudioProcess.getInputStream(), 32768);
         audioStreamer = new AudioStreamer(audioStream);
         audioStreamer.setVolume(volume);
-        // Audio start is deferred until the first video frame is read,
-        // so the audio doesn't race ahead of the video on startup.
 
         InputStream videoStream = new BufferedInputStream(ffmpegVideoProcess.getInputStream(), 65536);
         frameReaderThread = new Thread(() -> readFrames(videoStream), "Video-Frames-" + overlayId);
@@ -377,12 +282,6 @@ public class VideoTextureManager implements MediaProvider {
         frameReaderThread.start();
     }
 
-    /**
-     * Probe the source's video dimensions with ffprobe.
-     * @return true if valid dimensions were obtained; false if probing failed
-     *         or timed out. On failure the video is NOT started — a guessed
-     *         frame size would misalign every frame read from the pipe.
-     */
     private boolean probeDimensions(String source) {
         try {
             List<String> cmd = new ArrayList<>();
@@ -423,17 +322,6 @@ public class VideoTextureManager implements MediaProvider {
         }
     }
 
-    // ==================== Frame reader (background thread) ====================
-
-    /**
-     * Reads raw RGBA frames from the FFmpeg pipe and publishes them to the
-     * shared buffer for the render thread to upload.
-     * <p>
-     * Each frame is held back (the pipe write blocks FFmpeg in the meantime)
-     * until the audio clock reaches the frame's presentation timestamp, so the
-     * video can never display ahead of the audio. Silent videos / unavailable
-     * timestamps fall back to plain FPS pacing.
-     */
     private void readFrames(InputStream videoStream) {
         int framesRead = 0;
         try (DataInputStream dataIn = new DataInputStream(videoStream)) {
@@ -443,9 +331,6 @@ public class VideoTextureManager implements MediaProvider {
                 int localFrameSize = frameSize;
                 if (localRgba == null || localRead == null || localFrameSize <= 0) break;
 
-                // Blocking read of one frame. FFmpeg decodes at max speed
-                // (no -re) and the pipe handshake back-pressures it while we
-                // pace below.
                 dataIn.readFully(localRead, 0, localFrameSize);
                 framesRead++;
 
@@ -455,8 +340,6 @@ public class VideoTextureManager implements MediaProvider {
                     MiraHUD.LOGGER.info("Video frame 1 ready, audio started");
                 }
 
-                // Hold the frame until the audio clock reaches its pts, so the
-                // video can never race ahead of the audio (fixes 2-3s audio lag).
                 paceFrame(framesRead);
                 if (!running.get()) break;
 
@@ -475,11 +358,9 @@ public class VideoTextureManager implements MediaProvider {
         } catch (IOException e) {
             if (running.get()) {
                 if (framesRead > 0) {
-                    // Clean end-of-stream after frames flowed — video played to the end.
                     finishedNaturally = true;
                     MiraHUD.LOGGER.info("Video playback ended after {} frames", framesRead);
                 } else {
-                    // EOF with zero frames = FFmpeg crashed before decoding anything.
                     MiraHUD.LOGGER.warn("Video frame read error after {} frames ({}): {}",
                             framesRead, e.getClass().getSimpleName(), e.getMessage());
                 }
@@ -489,29 +370,12 @@ public class VideoTextureManager implements MediaProvider {
         }
     }
 
-    /**
-     * Pace the current frame to the master clock (audio when audible, wall clock
-     * otherwise), so the video never displays ahead of the audio.
-     * <p>
-     * The frame's target time is its true presentation timestamp when PTS capture
-     * works, otherwise frame-count (frameIndex / fps). Both target clocks are
-     * self-correcting: if the video decodes slower than real time the target is
-     * already in the past and the frame is published immediately (the video
-     * naturally lags instead of racing). No cumulative drift is possible — the
-     * previous FPS fallback slept 1/fps on top of the frame-read time, which
-     * cut a 60fps file's effective rate to ~33fps and let the audio outrun the
-     * video.
-     *
-     * @param framesRead 1-based index of the frame just decoded
-     */
     private void paceFrame(int framesRead) {
         if (videoFps <= 0) return;
         int frameIndex = framesRead - 1;
 
         boolean audioAudible = audioStreamer != null && audioStreamer.isActive() && !audioStreamer.isEof();
 
-        // Default target: frame-count pacing, evaluated against whichever clock
-        // is live below. Replaced by the true per-frame pts when available.
         double target = frameIndex / videoFps;
 
         if (audioAudible && usePts) {
@@ -520,12 +384,9 @@ public class VideoTextureManager implements MediaProvider {
                 ptsMissCount = 0;
                 target = pts;
             } else if (++ptsMissCount >= PTS_MISS_LIMIT) {
-                // Only give up after sustained failure, so a slow stderr delivery
-                // at startup doesn't permanently disable sync.
                 usePts = false;
                 MiraHUD.LOGGER.warn("Frame timestamps unavailable for overlay {}; using frame-count pacing.", overlayId);
             }
-            // Transient miss: keep the frame-count target for this frame only.
         }
 
         double clockNow = audioAudible
@@ -533,31 +394,25 @@ public class VideoTextureManager implements MediaProvider {
                 : (System.nanoTime() - playbackStartNanos) / 1_000_000_000.0;
 
         double ahead = target - clockNow;
-        if (ahead > 0.005) {
-            sleepWhileRunning((long) ((ahead - 0.005) * 1_000_000_000.0));
+        if (ahead > AUDIO_SYNC_TOLERANCE_S) {
+            sleepWhileRunning((long) ((ahead - AUDIO_SYNC_TOLERANCE_S) * 1_000_000_000.0));
         }
     }
 
-    /**
-     * Pop the presentation timestamp for a given output frame index (0-based,
-     * matching showinfo's {@code n:} counter), waiting briefly for the stderr
-     * thread to deliver it.
-     * @return the frame's normalized pts in seconds, or -1 if unavailable/timed out
-     */
     private double pollPts(int frameIndex) {
         long deadline = System.nanoTime() + PTS_POLL_NS;
         while (running.get() && System.nanoTime() < deadline) {
             PtsEntry entry = ptsQueue.peek();
             if (entry != null) {
                 if (entry.frameIndex < frameIndex) {
-                    ptsQueue.poll(); // stale entry — drop and continue
+                    ptsQueue.poll();
                     continue;
                 }
                 if (entry.frameIndex == frameIndex) {
                     ptsQueue.poll();
                     return entry.ptsTime;
                 }
-                return -1; // out of order — treat as unavailable
+                return -1;
             }
             try {
                 Thread.sleep(2);
@@ -568,11 +423,6 @@ public class VideoTextureManager implements MediaProvider {
         return -1;
     }
 
-    /**
-     * Reads FFmpeg's stderr: extracts per-frame {@code showinfo} timestamps
-     * into {@code queue}, forwards real errors to the log, and swallows the
-     * rest (the info-level startup chatter).
-     */
     private void parseShowInfo(InputStream stderrStream, ConcurrentLinkedQueue<PtsEntry> queue) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(stderrStream, StandardCharsets.UTF_8))) {
             String line;
@@ -583,14 +433,9 @@ public class VideoTextureManager implements MediaProvider {
                     try {
                         int n = Integer.parseInt(nMatcher.group(1));
                         double pts = Double.parseDouble(ptsMatcher.group(1));
-                        // Normalize to the first frame's pts so the video clock
-                        // always starts at 0, matching the audio clock when it
-                        // becomes audible. Handles MKVs whose container start
-                        // time is non-zero (e.g. demuxer offset handling).
                         if (Double.isNaN(firstPts)) firstPts = pts;
                         queue.add(new PtsEntry(n, pts - firstPts));
                     } catch (NumberFormatException ignored) {
-                        // malformed line — skip
                     }
                 } else if (isFfmpegErrorLine(line)) {
                     MiraHUD.LOGGER.error("[ffmpeg] {}", line);
@@ -599,15 +444,9 @@ public class VideoTextureManager implements MediaProvider {
                 }
             }
         } catch (IOException e) {
-            // stderr closed — the FFmpeg process was stopped/destroyed; expected.
         }
     }
 
-    /**
-     * Broad match for FFmpeg error messages, so real failures stay visible in
-     * the log even though the video process stderr is piped (not INHERIT) for
-     * pts parsing. Showinfo timestamp lines are handled before this is called.
-     */
     private static boolean isFfmpegErrorLine(String line) {
         String lower = line.toLowerCase(java.util.Locale.ROOT);
         return lower.contains("error")
@@ -620,7 +459,6 @@ public class VideoTextureManager implements MediaProvider {
                 || lower.contains("does not contain any stream");
     }
 
-    /** Sleep for {@code nanos} in short interruptible slices, honoring shutdown. */
     private void sleepWhileRunning(long nanos) {
         long deadline = System.nanoTime() + nanos;
         while (running.get()) {
@@ -629,14 +467,10 @@ public class VideoTextureManager implements MediaProvider {
             try {
                 Thread.sleep(Math.min(remaining / 1_000_000L, 10L));
             } catch (InterruptedException e) {
-                // Round 13 lesson: do NOT re-assert the interrupt flag here —
-                // the outer while (running.get()) handles shutdown.
                 break;
             }
         }
     }
-
-    // ==================== Tick (render thread) ====================
 
     @Override
     public void tick() {
@@ -648,7 +482,6 @@ public class VideoTextureManager implements MediaProvider {
             if (!frameReady) return;
             frameReady = false;
 
-            // Write RGBA data directly into the NativeImage's native memory
             ByteBuffer localRgba = rgbaBuffer;
             if (localRgba == null) return;
             ByteBuffer nativeBuf = MemoryUtil.memByteBuffer(nativeImage.getPointer(), frameSize);
@@ -657,8 +490,6 @@ public class VideoTextureManager implements MediaProvider {
             nativeBuf.flip();
         }
 
-        // In 1.21.11 upload() always re-uploads the NativeImage's memory to the
-        // GPU, so the pixels written above are visible immediately.
         dynTexture.upload();
     }
 
@@ -671,30 +502,16 @@ public class VideoTextureManager implements MediaProvider {
     @Override
     public void setVolume(float vol) {
         float clamped = Math.max(0f, Math.min(1f, vol));
-        // Skip the audio-API round-trip when nothing changed — the render loop
-        // calls setVolume every frame, so this avoids per-frame control lookups.
         if (clamped == this.volume) return;
         this.volume = clamped;
         if (audioStreamer != null) audioStreamer.setVolume(this.volume);
     }
-
-    // ==================== Cleanup ====================
 
     @Override
     public void cleanup() {
         teardown(false);
     }
 
-    /**
-     * Tears down the playback pipeline.
-     * <p>
-     * {@code preserveTexture == true} keeps the GPU texture, native image and
-     * direct buffers (plus the source/dimension bookkeeping) alive so a
-     * same-source restart — seek, restart or loop — can reuse them seamlessly.
-     * It is only used by {@link #seek}, which always restarts the same source,
-     * so the resolution is guaranteed unchanged. PTS/clock state is always
-     * reset because every pipeline start gets fresh timestamps.
-     */
     private void teardown(boolean preserveTexture) {
         running.set(false);
         playing.set(false);
@@ -718,12 +535,6 @@ public class VideoTextureManager implements MediaProvider {
         ffmpegVideoProcess = null;
         ffmpegAudioProcess = null;
 
-        // Make sure the old reader thread is fully unwound before a new
-        // pipeline (which reuses the same buffers in preserve mode) starts.
-        // Destroying the processes unblocks its blocking read; joining then
-        // prevents it from racing the new reader on the shared rgbaBuffer/
-        // readBuffer, or clobbering the new pipeline's running flag in its
-        // finally block.
         if (oldReader != null) {
             try { oldReader.join(2000); } catch (InterruptedException ignored) {}
         }
@@ -732,7 +543,6 @@ public class VideoTextureManager implements MediaProvider {
         finishedNaturally = false;
 
         if (!preserveTexture) {
-            // Close NativeImage before DynamicTexture
             if (nativeImage != null) {
                 nativeImage.close();
                 nativeImage = null;
@@ -740,10 +550,6 @@ public class VideoTextureManager implements MediaProvider {
             if (dynTexture != null) {
                 DynamicTexture tex = dynTexture;
                 dynTexture = null;
-                // Release synchronously on the render thread so the teardown
-                // is fully ordered BEFORE startFfmpeg (re)creates a texture
-                // under the same id — a deferred release could otherwise free
-                // the replacement texture. Defer only when off the render thread.
                 Runnable release = () -> {
                     Minecraft.getInstance().getTextureManager().release(textureId);
                     tex.close();
@@ -767,8 +573,6 @@ public class VideoTextureManager implements MediaProvider {
             seekPosition  = 0;
         }
 
-        // Fresh pipeline always needs fresh PTS/clock state (the stderr thread
-        // feeds a brand-new queue and re-normalizes pts to its first frame).
         ptsQueue      = new ConcurrentLinkedQueue<>();
         usePts        = true;
         ptsMissCount  = 0;
@@ -776,7 +580,6 @@ public class VideoTextureManager implements MediaProvider {
         playbackStartNanos = 0;
     }
 
-    /** Parse an ffprobe r_frame_rate value like "24/1" or "30000/1001". */
     private static double parseFrameRate(String raw) {
         if (raw == null || raw.isBlank()) return 0;
         String[] parts = raw.split("/");
