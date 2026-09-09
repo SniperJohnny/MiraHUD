@@ -10,8 +10,10 @@ import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPreset;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPresetManager;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
+import io.sniperjohnny.github.mirahud.client.widgets.FilteredEditBox;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
@@ -119,7 +121,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         }
     }
 
-    private void drawScrollbar(GuiGraphics graphics) {
+    private void drawScrollbar(GuiGraphicsExtractor graphics) {
         if (selectedIndex < 0 || settingsMaxScroll <= 0) return;
         int trackX = this.width - 6;
         int trackY = 42;
@@ -154,12 +156,12 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(graphics, mouseX, mouseY, partialTick);
         drawTree(graphics);
     }
 
-    private void drawTree(GuiGraphics graphics) {
+    private void drawTree(GuiGraphicsExtractor graphics) {
         // The tree only exists in the stump view: a clean trunk running down
         // the middle of the screen into the big clickable stump. When a branch
         // is selected the settings panel replaces the tree.
@@ -343,7 +345,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
 
     private void addOverlay() {
         if (overlayConfigs.isEmpty()) {
-            Minecraft.getInstance().setScreen(new MediaTypeSelectionScreen(
+            McScreens.setScreen(Minecraft.getInstance(), new MediaTypeSelectionScreen(
                     this,
                     Component.translatable(TranslationsKeys.CONFIG_MEDIA_TYPE_PROMPT),
                     null,
@@ -361,7 +363,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     }
 
     private void openTypeDropdown(OverlayConfig cfg) {
-        Minecraft.getInstance().setScreen(new MediaTypeSelectionScreen(
+        McScreens.setScreen(Minecraft.getInstance(), new MediaTypeSelectionScreen(
                 this,
                 Component.translatable(TranslationsKeys.CONFIG_MEDIA_TYPE_SELECT),
                 cfg.mediaType,
@@ -450,14 +452,14 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (dragMode) {
             renderDragMode(graphics);
             return;
         }
         renderPreview(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 8, 0xFFFFFFFF, true);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        graphics.text(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 8, 0xFFFFFFFF, true);
 
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) {
@@ -465,20 +467,20 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         }
         int ex = OVERLAY_LIST_WIDTH + 20;
         int labelDy = this.font.lineHeight + 2;
-        if (mediaTypeButton != null) graphics.drawString(this.font, MEDIA_TYPE_LABEL, ex, mediaTypeButton.getY() - labelDy, 0xFFFFFFFF, true);
-        if (enabledButton != null) graphics.drawString(this.font, ENABLED_LABEL, ex + 150, enabledButton.getY() - labelDy, 0xFFFFFFFF, true);
-        if (pathField != null) graphics.drawString(this.font, PATH_LABEL, ex, pathField.getY() - labelDy, 0xFFFFFFFF, true);
-        if (posXField != null) graphics.drawString(this.font, POS_X_LABEL, ex, posXField.getY() - labelDy, 0xFFFFFFFF, true);
-        if (posYField != null) graphics.drawString(this.font, POS_Y_LABEL, ex + 65, posYField.getY() - labelDy, 0xFFFFFFFF, true);
-        if (widthField != null) graphics.drawString(this.font, WIDTH_LABEL, ex + 130, widthField.getY() - labelDy, 0xFFFFFFFF, true);
-        if (heightField != null) graphics.drawString(this.font, HEIGHT_LABEL, ex + 195, heightField.getY() - labelDy, 0xFFFFFFFF, true);
-        if (presetNameField != null) graphics.drawString(this.font, PRESET_NAME_LABEL, presetNameField.getX(), presetNameField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (mediaTypeButton != null) graphics.text(this.font, MEDIA_TYPE_LABEL, ex, mediaTypeButton.getY() - labelDy, 0xFFFFFFFF, true);
+        if (enabledButton != null) graphics.text(this.font, ENABLED_LABEL, ex + 150, enabledButton.getY() - labelDy, 0xFFFFFFFF, true);
+        if (pathField != null) graphics.text(this.font, PATH_LABEL, ex, pathField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (posXField != null) graphics.text(this.font, POS_X_LABEL, ex, posXField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (posYField != null) graphics.text(this.font, POS_Y_LABEL, ex + 65, posYField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (widthField != null) graphics.text(this.font, WIDTH_LABEL, ex + 130, widthField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (heightField != null) graphics.text(this.font, HEIGHT_LABEL, ex + 195, heightField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (presetNameField != null) graphics.text(this.font, PRESET_NAME_LABEL, presetNameField.getX(), presetNameField.getY() - labelDy, 0xFFFFFFFF, true);
         updateSeekDisplay(graphics, cfg);
         drawFieldOutlines(graphics);
         drawScrollbar(graphics);
     }
 
-    private void updateSeekDisplay(GuiGraphics graphics, OverlayConfig cfg) {
+    private void updateSeekDisplay(GuiGraphicsExtractor graphics, OverlayConfig cfg) {
         if (videoSeekSlider == null || !cfg.isVideo()) return;
         MediaProvider prov = HudRenderingEntrypoint.getProvider(cfg.id);
         double dur = prov != null ? prov.getDurationSeconds() : 0;
@@ -487,7 +489,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
             videoSeekSlider.setSeekValue(Math.max(0, Math.min(1, pos / dur)));
         }
         String time = formatTime(pos) + " / " + formatTime(dur);
-        graphics.drawString(this.font, time, videoSeekSlider.getX() + videoSeekSlider.getWidth() + 6,
+        graphics.text(this.font, time, videoSeekSlider.getX() + videoSeekSlider.getWidth() + 6,
                 videoSeekSlider.getY() + 5, 0xFFFFFFFF, true);
     }
 
@@ -496,7 +498,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         return String.format("%d:%02d", total / 60, total % 60);
     }
 
-    private void drawFieldOutlines(GuiGraphics graphics) {
+    private void drawFieldOutlines(GuiGraphicsExtractor graphics) {
         float f = NeonScreen.transitionFactor(fieldLerpLastNanos, NeonScreen.TRANSITION_SPEED);
         fieldLerpLastNanos = System.nanoTime();
         for (EditBox field : List.of(pathField, posXField, posYField, widthField, heightField, presetNameField)) {
@@ -509,7 +511,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
             if (fieldColors.containsKey(field)) current = NeonScreen.lerpColor(current, target, f);
             fieldColors.put(field, current);
             int fx = field.getX(), fy = field.getY(), fw = field.getWidth(), fh = field.getHeight();
-            graphics.renderOutline(fx - 1, fy - 1, fw + 2, fh + 2, current);
+            graphics.outline(fx - 1, fy - 1, fw + 2, fh + 2, current);
             // pixel corner blocks, matching the buttons
             graphics.fill(fx - 1, fy - 1, fx + 1, fy + 1, current);
             graphics.fill(fx + fw - 1, fy - 1, fx + fw + 1, fy + 1, current);
@@ -518,7 +520,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         }
     }
 
-    private void renderDragMode(GuiGraphics graphics) {
+    private void renderDragMode(GuiGraphicsExtractor graphics) {
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) {
             exitDragMode();
@@ -526,24 +528,24 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         }
         graphics.fill(0, 0, this.width, this.height, 0xAA000000);
         int ax = HudRenderingEntrypoint.calculateX(cfg, this.width), ay = HudRenderingEntrypoint.calculateY(cfg, this.height);
-        graphics.renderOutline(ax - 2, ay - 2, cfg.width + 4, cfg.height + 4, NeonScreen.GLOW_HOVER);
-        graphics.renderOutline(ax - 1, ay - 1, cfg.width + 2, cfg.height + 2, NeonScreen.FOLIAGE);
+        graphics.outline(ax - 2, ay - 2, cfg.width + 4, cfg.height + 4, NeonScreen.GLOW_HOVER);
+        graphics.outline(ax - 1, ay - 1, cfg.width + 2, cfg.height + 2, NeonScreen.FOLIAGE);
         if (textureManager != null && textureManager.hasTexture())
             graphics.blit(RenderPipelines.GUI_TEXTURED, textureManager.getTextureId(), ax, ay, 0, 0, cfg.width, cfg.height, cfg.width, cfg.height, cfg.getColor());
         int cx = ax + cfg.width / 2, cy = ay + cfg.height / 2;
-        graphics.renderOutline(cx - 1, cy - 6, 2, 12, 0xFFFFFFFF);
-        graphics.renderOutline(cx - 6, cy - 1, 12, 2, 0xFFFFFFFF);
+        graphics.outline(cx - 1, cy - 6, 2, 12, 0xFFFFFFFF);
+        graphics.outline(cx - 6, cy - 1, 12, 2, 0xFFFFFFFF);
         int lg = font.lineHeight + 4, bh = lg * 3, ty = ay + cfg.height + 8;
         if (ty + bh > this.height - 4) ty = Math.max(4, ay - bh - 8);
         Component hint = Component.translatable(TranslationsKeys.CONFIG_DRAG_HINT);
         Component rch = Component.translatable(TranslationsKeys.CONFIG_DRAG_RECENTER_HINT);
         Component info = Component.translatable(TranslationsKeys.CONFIG_DRAG_POSITION_INFO, cfg.posX, cfg.posY, cfg.width, cfg.height, Component.translatable(cfg.anchor.getTranslationKey()));
-        graphics.drawString(font, hint, (width - font.width(hint)) / 2, ty, 0xFFFFFFFF, true);
-        graphics.drawString(font, rch, (width - font.width(rch)) / 2, ty + lg, 0xFFFFFFFF, true);
-        graphics.drawString(font, info, (width - font.width(info)) / 2, ty + lg * 2, 0xFFFFFFFF, true);
+        graphics.text(font, hint, (width - font.width(hint)) / 2, ty, 0xFFFFFFFF, true);
+        graphics.text(font, rch, (width - font.width(rch)) / 2, ty + lg, 0xFFFFFFFF, true);
+        graphics.text(font, info, (width - font.width(info)) / 2, ty + lg * 2, 0xFFFFFFFF, true);
     }
 
-    private void renderPreview(GuiGraphics graphics) {
+    private void renderPreview(GuiGraphicsExtractor graphics) {
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) return;
         int dw = cfg.width, dh = cfg.height;
@@ -556,7 +558,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
             cachedPreviewX = this.width - cachedPreviewWidth - 20;
             cachedPreviewY = 50;
         }
-        graphics.drawString(font, PREVIEW_LABEL, cachedPreviewX, cachedPreviewY - 38, 0xFFFFFFFF, true);
+        graphics.text(font, PREVIEW_LABEL, cachedPreviewX, cachedPreviewY - 38, 0xFFFFFFFF, true);
         if (textureManager != null && textureManager.hasTexture()) {
             graphics.blit(RenderPipelines.GUI_TEXTURED, textureManager.getTextureId(), cachedPreviewX, cachedPreviewY, 0, 0, cachedPreviewWidth, cachedPreviewHeight, cachedPreviewWidth, cachedPreviewHeight, cfg.getColor());
         }
@@ -731,7 +733,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) return;
         if (!pickerOpen.compareAndSet(false, true)) {
-            SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+            SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                     Component.translatable(TranslationsKeys.CONFIG_PICKER_ALREADY_OPEN_TITLE),
                     Component.translatable(TranslationsKeys.CONFIG_PICKER_ALREADY_OPEN_MESSAGE));
             return;
@@ -779,7 +781,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
                 applyPickedFile(cfg, path);
             } else {
                 MiraHUD.LOGGER.warn("No valid file was picked");
-                SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                         Component.translatable(TranslationsKeys.CONFIG_PASTE_PATH_HINT_TITLE),
                         Component.translatable(TranslationsKeys.CONFIG_PASTE_PATH_HINT_MESSAGE));
             }
@@ -857,7 +859,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         if (name.isBlank() || cfg == null) return;
         if (OverlayPresetManager.savePreset(name, cfg)) {
             presetNameField.setValue("");
-            SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+            SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                     Component.translatable(TranslationsKeys.CONFIG_PRESET_SAVED_TITLE), Component.literal(name));
         }
     }
@@ -868,7 +870,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         if (name.isBlank()) return;
         OverlayPresetManager.deletePreset(name);
         presetNameField.setValue("");
-        SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+        SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                 Component.translatable(TranslationsKeys.CONFIG_PRESET_DELETED_TITLE), Component.literal(name));
     }
 
@@ -910,7 +912,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         OverlayConfigManager.getRootConfig().overlays.addAll(overlayConfigs);
         OverlayConfigManager.save();
         HudRenderingEntrypoint.syncProviders();
-        Minecraft.getInstance().setScreen(parent);
+        McScreens.setScreen(Minecraft.getInstance(), parent);
     }
 
     private void onCancel() {
@@ -920,7 +922,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         OverlayConfigManager.getRootConfig().overlays.addAll(overlayConfigs);
         OverlayConfigManager.save();
         HudRenderingEntrypoint.syncProviders();
-        Minecraft.getInstance().setScreen(parent);
+        McScreens.setScreen(Minecraft.getInstance(), parent);
     }
 
     private void restoreConfig(OverlayConfig to, OverlayConfig from) {
@@ -941,9 +943,8 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     }
 
     private EditBox makeIntField(int x, int y, int w, int val, Predicate<String> filter) {
-        EditBox eb = new EditBox(font, x, y, w, 18, Component.empty());
+        EditBox eb = new FilteredEditBox(font, x, y, w, 18, Component.empty(), filter);
         eb.setValue(String.valueOf(val));
-        eb.setFilter(filter);
         track(eb);
         return eb;
     }

@@ -9,7 +9,8 @@ import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager
 import io.sniperjohnny.github.mirahud.client.overlay.config.RootConfig;
 import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonOverlayConfigScreen;
 import io.sniperjohnny.github.mirahud.client.screen.InventoryWidgetManagerScreen;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -36,7 +37,7 @@ public final class ModKeybinds {
                 Identifier.fromNamespaceAndPath(MiraHUD.MOD_ID, "mirahud_keybinds")
         );
 
-        pauseVideo = KeyBindingHelper.registerKeyBinding(
+        pauseVideo = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_PAUSE_VIDEO,
                         InputConstants.Type.KEYSYM,
@@ -44,7 +45,7 @@ public final class ModKeybinds {
                         CATEGORY
                 )
         );
-        toggleInventoryConfigOverlayKey = KeyBindingHelper.registerKeyBinding(
+        toggleInventoryConfigOverlayKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_OPEN_INVENTORY_CONFIG,
                         InputConstants.Type.KEYSYM,
@@ -52,7 +53,7 @@ public final class ModKeybinds {
                         CATEGORY
                 )
         );
-        openOverlayConfigKey = KeyBindingHelper.registerKeyBinding(
+        openOverlayConfigKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_OPEN_OVERLAY_CONFIG,
                         InputConstants.Type.KEYSYM,
@@ -61,7 +62,7 @@ public final class ModKeybinds {
                 )
         );
 
-        toggleOverlayKey = KeyBindingHelper.registerKeyBinding(
+        toggleOverlayKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_TOGGLE_OVERLAY,
                         InputConstants.Type.KEYSYM,
@@ -70,7 +71,7 @@ public final class ModKeybinds {
                 )
         );
 
-        skipForwardKey = KeyBindingHelper.registerKeyBinding(
+        skipForwardKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_SKIP_FORWARD,
                         InputConstants.Type.KEYSYM,
@@ -79,7 +80,7 @@ public final class ModKeybinds {
                 )
         );
 
-        skipBackwardKey = KeyBindingHelper.registerKeyBinding(
+        skipBackwardKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_SKIP_BACKWARD,
                         InputConstants.Type.KEYSYM,
@@ -88,7 +89,7 @@ public final class ModKeybinds {
                 )
         );
 
-        restartVideoKey = KeyBindingHelper.registerKeyBinding(
+        restartVideoKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(
                         TranslationsKeys.KEY_RESTART_VIDEO,
                         InputConstants.Type.KEYSYM,
@@ -103,8 +104,8 @@ public final class ModKeybinds {
     public static void tick(Minecraft client) {
         if (pauseVideo == null) return;
         while (openOverlayConfigKey.consumeClick()) {
-            Screen currentScreen = Minecraft.getInstance().screen;
-            Minecraft.getInstance().setScreen(new NeonOverlayConfigScreen(currentScreen));
+            Screen currentScreen = McScreens.getScreen(Minecraft.getInstance());
+            McScreens.setScreen(Minecraft.getInstance(), new NeonOverlayConfigScreen(currentScreen));
         }
 
         while (toggleOverlayKey.consumeClick()) {
@@ -117,53 +118,48 @@ public final class ModKeybinds {
             }
             OverlayConfigManager.save();
             if (client.player != null) {
-                client.player.displayClientMessage(
+                client.player.sendSystemMessage(
                         Component.translatable(TranslationsKeys.MESSAGE_OVERLAY_TOGGLED,
-                                Component.translatable(newState ? "options.on" : "options.off")),
-                        false
+                                Component.translatable(newState ? "options.on" : "options.off"))
                 );
             }
         }
         while (pauseVideo.consumeClick()) {
             boolean nowPlaying = HudRenderingEntrypoint.togglePlayPauseAllVideos();
             if (client.player != null) {
-                client.player.displayClientMessage(
+                client.player.sendOverlayMessage(
                         Component.translatable(nowPlaying
                                 ? TranslationsKeys.MESSAGE_VIDEO_RESUMED
-                                : TranslationsKeys.MESSAGE_VIDEO_PAUSED),
-                        true
+                                : TranslationsKeys.MESSAGE_VIDEO_PAUSED)
                 );
             }
         }
         while (toggleInventoryConfigOverlayKey.consumeClick()) {
-            Screen currentScreen = Minecraft.getInstance().screen;
-            Minecraft.getInstance().setScreen(new InventoryWidgetManagerScreen(
+            Screen currentScreen = McScreens.getScreen(Minecraft.getInstance());
+            McScreens.setScreen(Minecraft.getInstance(), new InventoryWidgetManagerScreen(
                     Component.translatable(TranslationsKeys.SCREEN_INVENTORY_WIDGET_MANAGER), currentScreen));
         }
         while (skipForwardKey.consumeClick()) {
             double newPos = HudRenderingEntrypoint.seekAllVideos(10);
             if (client.player != null) {
-                client.player.displayClientMessage(
-                        Component.translatable(TranslationsKeys.MESSAGE_SKIPPED_FORWARD, String.format("%.1f", newPos)),
-                        true
+                client.player.sendOverlayMessage(
+                        Component.translatable(TranslationsKeys.MESSAGE_SKIPPED_FORWARD, String.format("%.1f", newPos))
                 );
             }
         }
         while (skipBackwardKey.consumeClick()) {
             double newPos = HudRenderingEntrypoint.seekAllVideos(-10);
             if (client.player != null) {
-                client.player.displayClientMessage(
-                        Component.translatable(TranslationsKeys.MESSAGE_SKIPPED_BACKWARD, String.format("%.1f", newPos)),
-                        true
+                client.player.sendOverlayMessage(
+                        Component.translatable(TranslationsKeys.MESSAGE_SKIPPED_BACKWARD, String.format("%.1f", newPos))
                 );
             }
         }
         while (restartVideoKey.consumeClick()) {
             HudRenderingEntrypoint.restartAllVideos();
             if (client.player != null) {
-                client.player.displayClientMessage(
-                        Component.translatable(TranslationsKeys.MESSAGE_VIDEO_RESTARTED),
-                        true
+                client.player.sendOverlayMessage(
+                        Component.translatable(TranslationsKeys.MESSAGE_VIDEO_RESTARTED)
                 );
             }
         }

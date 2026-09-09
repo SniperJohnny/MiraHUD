@@ -35,7 +35,7 @@ public abstract class InventoryOverrideMixin extends Screen {
 
         CustomWidget sellWidget = new CustomWidget(xOrigin, yOrigin - 32, WIDGET_SIZE, WIDGET_SIZE, () -> {
             if (this.minecraft != null && this.minecraft.player != null) {
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_MONEYBAG_CLICKED), false);
+                this.minecraft.player.sendSystemMessage(Component.translatable(TranslationsKeys.MESSAGE_MONEYBAG_CLICKED));
                 this.minecraft.player.connection.sendCommand("sell");
             }
         }, "textures/widget_icons/moneybag.png", InventoryConfigManager.getConfig().sellWidgetwanted);

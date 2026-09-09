@@ -1,6 +1,6 @@
 package io.sniperjohnny.github.mirahud.client.hud_for_client;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -78,8 +78,8 @@ public abstract class NeonScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(graphics, mouseX, mouseY, partialTick);
         graphics.fillGradient(0, 0, this.width, this.height, PANEL, PANEL_BOTTOM);
         drawTopEdgePixels(graphics);
         drawPixelHeart(graphics, 7, 6);
@@ -87,7 +87,7 @@ public abstract class NeonScreen extends Screen {
         graphics.fill(0, 24, this.width, 25, WOOD_DARK);
     }
 
-    private void drawTopEdgePixels(GuiGraphics graphics) {
+    private void drawTopEdgePixels(GuiGraphicsExtractor graphics) {
         // Scattered leaf/tan pixels along the top edge, like the logo background.
         for (int i = 0; i < Math.max(4, this.width / 48); i++) {
             int x = i * 48 + (i * 13) % 17;
@@ -97,7 +97,7 @@ public abstract class NeonScreen extends Screen {
         }
     }
 
-    private void drawPixelHeart(GuiGraphics graphics, int x, int y) {
+    private void drawPixelHeart(GuiGraphicsExtractor graphics, int x, int y) {
         int scale = 2;
         for (int py = 0; py < HEART_PIXELS.length; py++) {
             int color = py >= 3 ? HEART_DARK : HEART;

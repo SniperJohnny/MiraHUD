@@ -1,6 +1,6 @@
 package io.sniperjohnny.github.mirahud.client.hud_for_client;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
 
@@ -18,7 +18,7 @@ public abstract class NeonSlider extends AbstractSliderButton {
     }
 
     @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         boolean hovered = this.isHovered();
         boolean engaged = this.value > 0 || this.isFocused();
         int target = !this.active ? NeonScreen.DISABLED
@@ -40,6 +40,6 @@ public abstract class NeonSlider extends AbstractSliderButton {
         graphics.fill(this.getX() + 1, midY - 1, this.getX() + this.width - 1, midY + 2, this.currentColor);
         graphics.fill(handleX, this.getY() + 2, handleX + HANDLE_WIDTH, this.getY() + this.height - 2, this.currentColor);
         if (this.currentGlow != 0 && NeonScreen.glowVisible(this.currentGlow))
-            graphics.renderOutline(handleX - 2, this.getY(), HANDLE_WIDTH + 4, this.height, this.currentGlow);
+            graphics.outline(handleX - 2, this.getY(), HANDLE_WIDTH + 4, this.height, this.currentGlow);
     }
 }

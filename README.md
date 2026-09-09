@@ -36,7 +36,7 @@ This is not some baked experiment. MiraHUD runs a FFmpeg video pipeline. Your vi
 
 - Per-overlay volume control. Each overlay has its volume slider and it respects your Minecraft master volume too. You can have a video in one corner and a quiet one in another.
 
-- FFmpeg handles itself. If you don't have FFmpeg installed MiraHUD quietly downloads a build in the background while you keep playing. Your own FFmpeg installation (if you even have one) is never touched, moved or modified. On Windows this is fully automatic. On platforms you can install FFmpeg through your package manager.
+- FFmpeg handles itself. If you don't have FFmpeg installed MiraHUD quietly downloads a build in the background while you keep playing. Your own FFmpeg installation (if you even have one) is never touched, moved or modified. On Windows, Linux and macOS this is fully automatic.
 
 - Self-healing playback. If a video pipeline crashes or a file fails to load MiraHUD notices, backs off and retries on its own. It doesn't just freeze on a frame and give up.
 
@@ -104,13 +104,13 @@ Key | What It Does |
 
 ## What You'll Need
 
-- Minecraft 1.21.11
+- Minecraft 26.1 – 26.2
 
-- Fabric Loader 0.19.3 or newer
+- Fabric Loader 0.19.5 or newer
 
 - Fabric API
 
-- Java 21 or newer
+- Java 25 or newer
 
 MiraHUD is completely client-side. Install it on your machine. It works on any server. Vanilla, modded, minigames, anything. The server doesn't need anything installed. On Windows, Linux and macOS MiraHUD checks for FFmpeg at startup and, if it's missing, automatically downloads a portable build in the background while you play. It validates the download before using it, and if the binaries ever turn out to be corrupt it deletes them and downloads fresh ones. Your own FFmpeg installation (if you have one) is never touched.
 
@@ -118,7 +118,7 @@ MiraHUD is completely client-side. Install it on your machine. It works on any s
 
 ## Installation
 
-1. Install Fabric Loader for Minecraft 1.21.11. Drop the Fabric API jar into your mods folder.
+1. Install Fabric Loader for Minecraft 26.1 or 26.2. Drop the Fabric API jar into your mods folder.
 
 2. Drop the jar into your mods folder.
 

@@ -10,9 +10,11 @@ import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPreset;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPresetManager;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
+import io.sniperjohnny.github.mirahud.client.widgets.FilteredEditBox;
 import net.minecraft.locale.Language;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -297,45 +299,45 @@ public class OverlayConfigScreen extends Screen {
     private void exitDragMode() { dragMode = false; dragging = false; }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (dragMode) { renderDragMode(graphics); return; }
         renderPreview(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 8, 0xFFFFFFFF, true);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        graphics.text(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 8, 0xFFFFFFFF, true);
         OverlayConfig cfg = selectedConfig(); if (cfg == null) return;
         int ex = OVERLAY_LIST_WIDTH + 20;
-        graphics.drawString(this.font, MEDIA_TYPE_LABEL, ex, 32, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, ENABLED_LABEL, ex + 150, 32, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, PATH_LABEL, ex, 56, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, POS_X_LABEL, ex, 80, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, POS_Y_LABEL, ex + 65, 80, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, WIDTH_LABEL, ex + 130, 80, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, HEIGHT_LABEL, ex + 195, 80, 0xFFFFFFFF, true);
-        if (presetNameField != null) graphics.drawString(this.font, PRESET_NAME_LABEL, presetNameField.getX(), presetNameField.getY() - font.lineHeight - 2, 0xFFFFFFFF, true);
+        graphics.text(this.font, MEDIA_TYPE_LABEL, ex, 32, 0xFFFFFFFF, true);
+        graphics.text(this.font, ENABLED_LABEL, ex + 150, 32, 0xFFFFFFFF, true);
+        graphics.text(this.font, PATH_LABEL, ex, 56, 0xFFFFFFFF, true);
+        graphics.text(this.font, POS_X_LABEL, ex, 80, 0xFFFFFFFF, true);
+        graphics.text(this.font, POS_Y_LABEL, ex + 65, 80, 0xFFFFFFFF, true);
+        graphics.text(this.font, WIDTH_LABEL, ex + 130, 80, 0xFFFFFFFF, true);
+        graphics.text(this.font, HEIGHT_LABEL, ex + 195, 80, 0xFFFFFFFF, true);
+        if (presetNameField != null) graphics.text(this.font, PRESET_NAME_LABEL, presetNameField.getX(), presetNameField.getY() - font.lineHeight - 2, 0xFFFFFFFF, true);
     }
 
-    private void renderDragMode(GuiGraphics graphics) {
+    private void renderDragMode(GuiGraphicsExtractor graphics) {
         OverlayConfig cfg = selectedConfig(); if (cfg == null) { exitDragMode(); return; }
         graphics.fill(0, 0, this.width, this.height, 0xAA000000);
         int ax = HudRenderingEntrypoint.calculateX(cfg, this.width), ay = HudRenderingEntrypoint.calculateY(cfg, this.height);
-        graphics.renderOutline(ax - 2, ay - 2, cfg.width + 4, cfg.height + 4, 0x6600FF00);
-        graphics.renderOutline(ax - 1, ay - 1, cfg.width + 2, cfg.height + 2, 0xFF00FF00);
+        graphics.outline(ax - 2, ay - 2, cfg.width + 4, cfg.height + 4, 0x6600FF00);
+        graphics.outline(ax - 1, ay - 1, cfg.width + 2, cfg.height + 2, 0xFF00FF00);
         if (textureManager != null && textureManager.hasTexture())
             graphics.blit(RenderPipelines.GUI_TEXTURED, textureManager.getTextureId(), ax, ay, 0, 0, cfg.width, cfg.height, cfg.width, cfg.height, cfg.getColor());
         int cx = ax + cfg.width / 2, cy = ay + cfg.height / 2;
-        graphics.renderOutline(cx - 1, cy - 6, 2, 12, 0xFFFFFFFF);
-        graphics.renderOutline(cx - 6, cy - 1, 12, 2, 0xFFFFFFFF);
+        graphics.outline(cx - 1, cy - 6, 2, 12, 0xFFFFFFFF);
+        graphics.outline(cx - 6, cy - 1, 12, 2, 0xFFFFFFFF);
         int lg = font.lineHeight + 4, bh = lg * 3, ty = ay + cfg.height + 8;
         if (ty + bh > this.height - 4) ty = Math.max(4, ay - bh - 8);
         Component hint = Component.translatable(TranslationsKeys.CONFIG_DRAG_HINT);
         Component rch = Component.translatable(TranslationsKeys.CONFIG_DRAG_RECENTER_HINT);
         Component info = Component.translatable(TranslationsKeys.CONFIG_DRAG_POSITION_INFO, cfg.posX, cfg.posY, cfg.width, cfg.height, Component.translatable(cfg.anchor.getTranslationKey()));
-        graphics.drawString(font, hint, (width - font.width(hint)) / 2, ty, 0xFFFFFFFF, true);
-        graphics.drawString(font, rch, (width - font.width(rch)) / 2, ty + lg, 0xFFFFFFFF, true);
-        graphics.drawString(font, info, (width - font.width(info)) / 2, ty + lg * 2, 0xFFFFFFFF, true);
+        graphics.text(font, hint, (width - font.width(hint)) / 2, ty, 0xFFFFFFFF, true);
+        graphics.text(font, rch, (width - font.width(rch)) / 2, ty + lg, 0xFFFFFFFF, true);
+        graphics.text(font, info, (width - font.width(info)) / 2, ty + lg * 2, 0xFFFFFFFF, true);
     }
 
-    private void renderPreview(GuiGraphics graphics) {
+    private void renderPreview(GuiGraphicsExtractor graphics) {
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) return;
         int dw = cfg.width, dh = cfg.height; if (dw <= 0 || dh <= 0) return;
@@ -347,7 +349,7 @@ public class OverlayConfigScreen extends Screen {
             cachedPreviewX = this.width - cachedPreviewWidth - 20;
             cachedPreviewY = 50;
         }
-        graphics.drawString(font, PREVIEW_LABEL, cachedPreviewX, cachedPreviewY - 38, 0xFFFFFFFF, true);
+        graphics.text(font, PREVIEW_LABEL, cachedPreviewX, cachedPreviewY - 38, 0xFFFFFFFF, true);
         if (textureManager != null && textureManager.hasTexture()) {
             graphics.blit(RenderPipelines.GUI_TEXTURED, textureManager.getTextureId(), cachedPreviewX, cachedPreviewY, 0, 0, cachedPreviewWidth, cachedPreviewHeight, cachedPreviewWidth, cachedPreviewHeight, cfg.getColor());
         }
@@ -431,7 +433,7 @@ public class OverlayConfigScreen extends Screen {
     private void openFilePicker() {
         OverlayConfig cfg = selectedConfig(); if (cfg == null) return;
         if (!pickerOpen.compareAndSet(false, true)) {
-            SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+            SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                     Component.translatable(TranslationsKeys.CONFIG_PICKER_ALREADY_OPEN_TITLE),
                     Component.translatable(TranslationsKeys.CONFIG_PICKER_ALREADY_OPEN_MESSAGE));
             return;
@@ -483,7 +485,7 @@ public class OverlayConfigScreen extends Screen {
                 applyPickedFile(cfg, path);
             } else {
                 MiraHUD.LOGGER.warn("No valid file was picked");
-                SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                         Component.translatable(TranslationsKeys.CONFIG_PASTE_PATH_HINT_TITLE),
                         Component.translatable(TranslationsKeys.CONFIG_PASTE_PATH_HINT_MESSAGE));
             }
@@ -544,14 +546,14 @@ public class OverlayConfigScreen extends Screen {
         if (name.isBlank() || cfg == null) return;
         if (OverlayPresetManager.savePreset(name, cfg)) {
             presetNameField.setValue("");
-            SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable(TranslationsKeys.CONFIG_PRESET_SAVED_TITLE), Component.literal(name));
+            SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable(TranslationsKeys.CONFIG_PRESET_SAVED_TITLE), Component.literal(name));
         }
     }
     private void deletePreset() {
         if (presetNameField == null) return;
         String name = presetNameField.getValue(); if (name.isBlank()) return;
         OverlayPresetManager.deletePreset(name); presetNameField.setValue("");
-        SystemToast.add(Minecraft.getInstance().getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable(TranslationsKeys.CONFIG_PRESET_DELETED_TITLE), Component.literal(name));
+        SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.translatable(TranslationsKeys.CONFIG_PRESET_DELETED_TITLE), Component.literal(name));
     }
     private void loadPreset(int dir) {
         java.util.List<String> names = OverlayPresetManager.getPresetNames(); if (names.isEmpty()) return;
@@ -585,7 +587,7 @@ public class OverlayConfigScreen extends Screen {
         OverlayConfigManager.getRootConfig().overlays.addAll(overlayConfigs);
         OverlayConfigManager.save();
         HudRenderingEntrypoint.syncProviders();
-        Minecraft.getInstance().setScreen(parent);
+        McScreens.setScreen(Minecraft.getInstance(), parent);
     }
     private void onCancel() {
         overlayConfigs.clear();
@@ -594,7 +596,7 @@ public class OverlayConfigScreen extends Screen {
         OverlayConfigManager.getRootConfig().overlays.addAll(overlayConfigs);
         OverlayConfigManager.save();
         HudRenderingEntrypoint.syncProviders();
-        Minecraft.getInstance().setScreen(parent);
+        McScreens.setScreen(Minecraft.getInstance(), parent);
     }
     private void restoreConfig(OverlayConfig to, OverlayConfig from) {
         to.mediaType = from.mediaType; to.enabled = from.enabled; to.sourcePath = from.sourcePath;
@@ -606,8 +608,8 @@ public class OverlayConfigScreen extends Screen {
     }
 
     private EditBox makeIntField(int x, int y, int w, int val, Predicate<String> filter) {
-        EditBox eb = new EditBox(font, x, y, w, 18, Component.empty());
-        eb.setValue(String.valueOf(val)); eb.setFilter(filter); this.addRenderableWidget(eb); return eb;
+        EditBox eb = new FilteredEditBox(font, x, y, w, 18, Component.empty(), filter);
+        eb.setValue(String.valueOf(val)); this.addRenderableWidget(eb); return eb;
     }
 
     private Component enabledLabel(OverlayConfig c) { return Component.translatable(c.enabled ? TranslationsKeys.CONFIG_ENABLED_ON : TranslationsKeys.CONFIG_ENABLED_OFF); }

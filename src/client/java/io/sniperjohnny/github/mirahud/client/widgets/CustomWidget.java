@@ -2,7 +2,7 @@ package io.sniperjohnny.github.mirahud.client.widgets;
 
 import io.sniperjohnny.github.mirahud.MiraHUD;
 import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonScreen;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -33,14 +33,14 @@ public class CustomWidget extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         boolean hovered = this.isHovered();
         int outline = hovered ? NeonScreen.FOLIAGE : NeonScreen.WOOD;
         int x = this.getX(), y = this.getY(), w = this.width, h = this.height;
 
         graphics.fill(x, y, x + w, y + h, 0xFF141414);
         if (hovered) graphics.fill(x, y, x + w, y + h, NeonScreen.ROW_HOVER);
-        if (hovered) graphics.renderOutline(x - 2, y - 2, w + 4, h + 4, NeonScreen.GLOW_HOVER);
+        if (hovered) graphics.outline(x - 2, y - 2, w + 4, h + 4, NeonScreen.GLOW_HOVER);
         // chunky 2px pixel border
         graphics.fill(x, y, x + w, y + 2, outline);
         graphics.fill(x, y + h - 2, x + w, y + h, outline);
@@ -85,7 +85,7 @@ public class CustomWidget extends AbstractWidget {
         }
     }
 
-    private void renderScaledItem(GuiGraphics graphics, ItemStack itemStack) {
+    private void renderScaledItem(GuiGraphicsExtractor graphics, ItemStack itemStack) {
         float scaleX = (float) this.width / 16.0f;
         float scaleY = (float) this.height / 16.0f;
 
@@ -93,7 +93,7 @@ public class CustomWidget extends AbstractWidget {
         graphics.pose().translate(this.getX(), this.getY());
         graphics.pose().scale(scaleX, scaleY);
 
-        graphics.renderItem(itemStack, 0, 0);
+        graphics.item(itemStack, 0, 0);
         graphics.pose().popMatrix();
     }
 

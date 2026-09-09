@@ -9,6 +9,7 @@ import io.sniperjohnny.github.mirahud.client.overlay.ImageTextureManager;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager;
 import io.sniperjohnny.github.mirahud.client.overlay.config.VideoConfigManager;
 import io.sniperjohnny.github.mirahud.client.screen.TranslationNoticeScreen;
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -44,7 +45,7 @@ public class MiraHUD implements ClientModInitializer {
 
     private void showTranslationNoticeOnFirstLaunch(Minecraft client) {
         if (translationNoticeAttempted) return;
-        Screen current = client.screen;
+        Screen current = McScreens.getScreen(client);
         if (current == null || current != stableScreen) {
             stableScreen = current;
             stableScreenTicks = 0;
@@ -56,7 +57,7 @@ public class MiraHUD implements ClientModInitializer {
         if (!config.translationNoticeShown) {
             config.translationNoticeShown = true;
             NoticeConfigManager.save();
-            client.setScreen(new TranslationNoticeScreen(current));
+            McScreens.setScreen(client, new TranslationNoticeScreen(current));
         }
     }
 

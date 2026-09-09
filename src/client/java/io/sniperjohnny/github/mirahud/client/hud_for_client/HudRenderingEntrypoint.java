@@ -7,7 +7,7 @@ import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfig;
 import io.sniperjohnny.github.mirahud.client.overlay.config.RootConfig;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager;
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 
 import java.util.Iterator;
@@ -27,7 +27,7 @@ public class HudRenderingEntrypoint {
     private static final Map<String, Integer> videoRestartCount = new ConcurrentHashMap<>();
     private static final Map<String, Long> videoAliveSince = new ConcurrentHashMap<>();
 
-    public static void render(GuiGraphics graphics, DeltaTracker tickCounter) {
+    public static void render(GuiGraphicsExtractor graphics, DeltaTracker tickCounter) {
         RootConfig root = OverlayConfigManager.getRootConfig();
         if (root.overlays.isEmpty()) return;
 

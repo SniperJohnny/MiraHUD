@@ -2,6 +2,7 @@ package io.sniperjohnny.github.mirahud.client.overlay;
 
 import io.sniperjohnny.github.mirahud.MiraHUD;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.SystemToast;
@@ -460,7 +461,7 @@ public class ExternalToolManager {
 
     private static void showToast(String titleKey, String messageKey) {
         Minecraft.getInstance().execute(() ->
-            SystemToast.add(Minecraft.getInstance().getToastManager(),
+            SystemToast.add(McScreens.getToastManager(Minecraft.getInstance()),
                 SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                 Component.translatable(titleKey),
                 Component.translatable(messageKey))

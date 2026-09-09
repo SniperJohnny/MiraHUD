@@ -1,5 +1,6 @@
 package io.sniperjohnny.github.mirahud.client.hud_for_client;
 
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -29,7 +30,7 @@ public class MediaTypeSelectionScreen extends NeonScreen {
                     Component.translatable(type.translationKey()),
                     () -> {
                         onPicked.accept(type.id());
-                        Minecraft.getInstance().setScreen(parent);
+                        McScreens.setScreen(Minecraft.getInstance(), parent);
                     })
                     .setActiveState(type.id().equals(currentTypeId));
             this.addRenderableWidget(button);
@@ -39,6 +40,6 @@ public class MediaTypeSelectionScreen extends NeonScreen {
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        McScreens.setScreen(Minecraft.getInstance(), parent);
     }
 }

@@ -2,7 +2,7 @@ package io.sniperjohnny.github.mirahud.client.hud_for_client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.KeyEvent;
@@ -62,7 +62,7 @@ public class NeonButton extends AbstractWidget {
     }
 
     @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         boolean hovered = this.isHovered();
         int target = !this.active ? NeonScreen.DISABLED
                 : hovered ? NeonScreen.HOVER
@@ -82,7 +82,7 @@ public class NeonButton extends AbstractWidget {
         int x = this.getX(), y = this.getY(), w = this.width, h = this.height;
         graphics.fill(x, y, x + w, y + h, NeonScreen.ROW);
         if (hovered && this.active) graphics.fill(x, y, x + w, y + h, NeonScreen.ROW_HOVER);
-        if (this.currentGlow != 0 && NeonScreen.glowVisible(this.currentGlow)) graphics.renderOutline(x - 2, y - 2, w + 4, h + 4, this.currentGlow);
+        if (this.currentGlow != 0 && NeonScreen.glowVisible(this.currentGlow)) graphics.outline(x - 2, y - 2, w + 4, h + 4, this.currentGlow);
         // chunky 2px pixel border
         graphics.fill(x, y, x + w, y + 2, this.currentColor);
         graphics.fill(x, y + h - 2, x + w, y + h, this.currentColor);
@@ -98,9 +98,9 @@ public class NeonButton extends AbstractWidget {
         int textRightInset = this.chevron ? 14 : 0;
         int textX = this.getX() + (this.width - Minecraft.getInstance().font.width(label) - textRightInset) / 2;
         int textY = this.getY() + (this.height - 8) / 2;
-        graphics.drawString(Minecraft.getInstance().font, label, textX, textY, 0xFFFFFFFF, true);
+        graphics.text(Minecraft.getInstance().font, label, textX, textY, 0xFFFFFFFF, true);
         if (this.chevron) {
-            graphics.drawString(Minecraft.getInstance().font, "▾", this.getX() + this.width - 9, textY, 0xFFFFFFFF, true);
+            graphics.text(Minecraft.getInstance().font, "▾", this.getX() + this.width - 9, textY, 0xFFFFFFFF, true);
         }
     }
 

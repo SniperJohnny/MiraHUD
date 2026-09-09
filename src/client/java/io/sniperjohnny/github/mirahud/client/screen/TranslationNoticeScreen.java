@@ -3,8 +3,9 @@ package io.sniperjohnny.github.mirahud.client.screen;
 import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonButton;
 import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonScreen;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
+import io.sniperjohnny.github.mirahud.client.util.McScreens;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -36,12 +37,12 @@ public class TranslationNoticeScreen extends NeonScreen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         Component brand = Component.literal("MiraHUD");
-        graphics.drawString(this.font, brand, (this.width - this.font.width(brand)) / 2,
+        graphics.text(this.font, brand, (this.width - this.font.width(brand)) / 2,
                 this.height / 2 - 110, NeonScreen.FOLIAGE, true);
-        graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2,
+        graphics.text(this.font, this.title, (this.width - this.font.width(this.title)) / 2,
                 this.height / 2 - 88, 0xFFFFFFFF, true);
 
         List<FormattedCharSequence> lines = this.font.split(
@@ -51,7 +52,7 @@ public class TranslationNoticeScreen extends NeonScreen {
         int bottomLimit = this.height - 70;
         for (FormattedCharSequence line : lines) {
             if (y > bottomLimit) break;
-            graphics.drawString(this.font, line, (this.width - this.font.width(line)) / 2,
+            graphics.text(this.font, line, (this.width - this.font.width(line)) / 2,
                     y, 0xFFFFFFFF);
             y += this.font.lineHeight + 2;
         }
@@ -59,6 +60,6 @@ public class TranslationNoticeScreen extends NeonScreen {
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(previousScreen);
+        McScreens.setScreen(Minecraft.getInstance(), previousScreen);
     }
 }

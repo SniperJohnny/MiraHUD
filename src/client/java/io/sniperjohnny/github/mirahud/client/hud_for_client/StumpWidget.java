@@ -2,7 +2,7 @@ package io.sniperjohnny.github.mirahud.client.hud_for_client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.KeyEvent;
@@ -50,7 +50,7 @@ public class StumpWidget extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         int s = Math.max(1, this.height / BASE_H);
         int cx = this.getX() + this.width / 2;
         int top = this.getY();
@@ -67,7 +67,7 @@ public class StumpWidget extends AbstractWidget {
 
         // hover glow
         if (this.isHovered()) {
-            graphics.renderOutline(cx - 11 * s, top - 2, 22 * s, this.height + 4, NeonScreen.GLOW_HOVER);
+            graphics.outline(cx - 11 * s, top - 2, 22 * s, this.height + 4, NeonScreen.GLOW_HOVER);
         }
 
         // green plus: "grow a branch here"

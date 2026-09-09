@@ -2,7 +2,7 @@ package io.sniperjohnny.github.mirahud.client.hud_for_client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -87,7 +87,7 @@ public class TreeBranchWidget extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         int branchY = this.getY() + BRANCH_Y_OFFSET;
         int inner = TRUNK_W / 2;
         int tipX = branchLeft ? trunkX - inner - BRANCH_LEN : trunkX + inner + BRANCH_LEN;
@@ -108,9 +108,9 @@ public class TreeBranchWidget extends AbstractWidget {
 
         // glow around the canopy
         if (this.isHovered()) {
-            graphics.renderOutline(tipX - 7, branchY - 11, 15, 9, NeonScreen.GLOW_HOVER);
+            graphics.outline(tipX - 7, branchY - 11, 15, 9, NeonScreen.GLOW_HOVER);
         } else if (this.selected) {
-            graphics.renderOutline(tipX - 7, branchY - 11, 15, 9, NeonScreen.GLOW_ACTIVE);
+            graphics.outline(tipX - 7, branchY - 11, 15, 9, NeonScreen.GLOW_ACTIVE);
         }
 
         if (this.hasLeaves) drawCanopy(graphics, tipX, branchY);
@@ -121,10 +121,10 @@ public class TreeBranchWidget extends AbstractWidget {
         int lx = branchLeft
                 ? Math.max(this.getX(), tipX - 8 - lw)
                 : Math.min(this.getX() + this.width - lw, tipX + 8);
-        graphics.drawString(Minecraft.getInstance().font, lbl, lx, branchY + 4, 0xFFFFFFFF, true);
+        graphics.text(Minecraft.getInstance().font, lbl, lx, branchY + 4, 0xFFFFFFFF, true);
     }
 
-    private void drawCanopy(GuiGraphics graphics, int tipX, int branchY) {
+    private void drawCanopy(GuiGraphicsExtractor graphics, int tipX, int branchY) {
         int x = tipX - 6;
         int y = branchY - 10;
         if (this.animatedLeaves) {
@@ -142,7 +142,7 @@ public class TreeBranchWidget extends AbstractWidget {
         }
     }
 
-    private void drawHeart(GuiGraphics graphics, int x, int y) {
+    private void drawHeart(GuiGraphicsExtractor graphics, int x, int y) {
         for (int py = 0; py < HEART.length; py++) {
             int color = py >= 3 ? NeonScreen.HEART_DARK : NeonScreen.HEART;
             for (int px = 0; px < HEART[py].length(); px++) {
