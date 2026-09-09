@@ -30,7 +30,7 @@ This is not some baked experiment. MiraHUD runs a FFmpeg video pipeline. Your vi
 
 - Audio that actually stays in sync. The audio track is the master clock. Video frames are held back to their presentation timestamps so the sound and picture never drift apart. It's frame-accurate, not "close enough."
 
-- Full playback controls.. Resume with P. Skip forward or back 10 seconds with the arrow keys. Restart from the beginning with R. Toggle looping on or off.
+- Full playback controls. Resume with P. Skip forward or back 10 seconds with the arrow keys. Restart from the beginning with R. Toggle looping on or off. Video overlays also get a VLC-style seek bar in the config screen: drag to scrub to any moment, with a live elapsed / total time readout next to it.
 
 - Loop mode is seamless. No flicker, no reloading no GPU spikes. It just restarts cleanly.
 
@@ -66,6 +66,18 @@ Nothing is hidden in config files. Everything is straightforward.
 
 - path resolution. Typed a path wrong. Pasted something weird? MiraHUD automatically searches your Videos, Downloads, Desktop and Documents folders by filename. Fixes the path for you. It's surprisingly good at finding things.
 
+### The Overlay Tree
+
+Press **O** and the config screen grows a pixel-art tree in the middle of your screen. The tree *is* your overlay list.
+
+- **The stump is the add button.** Press the stump at the base of the trunk to grow a new branch (overlay). When the tree is empty it asks whether you want an image or a video; otherwise it just grows one.
+
+- **Branches are overlays.** Every overlay is a branch on the trunk. An enabled overlay grows a full leaf canopy; a disabled one stays bare. Video overlays' leaves sway gently in the wind, image overlays' leaves stay still, so you can tell them apart at a glance.
+
+- **Click a branch to edit it.** Its settings open on the left: path, position, size, opacity, volume, play/loop, seek bar and presets. **< Back** returns you to the tree and **- Remove** chops the branch off.
+
+- **At a glance.** The overlay you're editing gets a purple pixel heart pinned on the trunk. Hovering a branch highlights it green and shows the full file path.
+
 ### Quick Controls
 
 Every keybind can be changed in the vanilla Minecraft Controls menu.
@@ -74,7 +86,7 @@ Key | What It Does |
 
 |-----|-------------|
 
-| O | Open the Overlay Config screen. Add, tweak and position your overlays |
+| O | Open the Overlay Config screen (the tree). Press the stump to add an overlay, click a branch to edit it |
 
 | K | Toggle all overlays on or off at once (handy for screenshots or cutscenes) |
 
@@ -100,7 +112,7 @@ Key | What It Does |
 
 - Java 21 or newer
 
-MiraHUD is completely client-side. Install it on your machine. It works on any server. Vanilla, modded, minigames, anything. The server doesn't need anything installed. On Windows video overlays automatically download a portable FFmpeg build the time you use them. On platforms install FFmpeg through your package manager (apt, brew, pacman, etc.).
+MiraHUD is completely client-side. Install it on your machine. It works on any server. Vanilla, modded, minigames, anything. The server doesn't need anything installed. On Windows, Linux and macOS MiraHUD checks for FFmpeg at startup and, if it's missing, automatically downloads a portable build in the background while you play. It validates the download before using it, and if the binaries ever turn out to be corrupt it deletes them and downloads fresh ones. Your own FFmpeg installation (if you have one) is never touched.
 
 ---
 
@@ -110,7 +122,7 @@ MiraHUD is completely client-side. Install it on your machine. It works on any s
 
 2. Drop the jar into your mods folder.
 
-3. Launch the game. Press O to open the overlay config. Start setting things up.
+3. Launch the game. Press O to open the overlay tree, then press the stump at its base to grow your first overlay.
 
 ---
 

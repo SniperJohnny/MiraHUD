@@ -1,29 +1,33 @@
 package io.sniperjohnny.github.mirahud.client.screen;
 
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonButton;
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonScreen;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-public class CustomScreen extends Screen {
+public class CustomScreen extends NeonScreen {
     public Screen parent;
+
     public CustomScreen(Component title, Screen parent) {
         super(title);
         this.parent = parent;
     }
+
     @Override
     protected void init() {
-        Button buttonWidget = Button.builder(Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_BUTTON), (btn) -> {
-            this.minecraft.getToastManager().addToast(
-                    SystemToast.multiline(this.minecraft, SystemToast.SystemToastId.NARRATOR_TOGGLE,
-                            Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_TOAST_TITLE),
-                            Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_TOAST_MESSAGE))
-            );
-        }).bounds(40, 40, 120, 20).build();
-        this.addRenderableWidget(buttonWidget);
+        this.addRenderableWidget(new NeonButton(40, 40, 120, 20,
+                Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_BUTTON), () -> {
+                    this.minecraft.getToastManager().addToast(
+                            SystemToast.multiline(this.minecraft, SystemToast.SystemToastId.NARRATOR_TOGGLE,
+                                    Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_TOAST_TITLE),
+                                    Component.translatable(TranslationsKeys.SCREEN_HELLO_WORLD_TOAST_MESSAGE))
+                    );
+                }));
     }
+
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         super.render(graphics, mouseX, mouseY, delta);

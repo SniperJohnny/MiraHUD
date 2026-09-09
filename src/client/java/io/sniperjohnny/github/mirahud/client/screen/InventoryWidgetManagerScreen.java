@@ -1,98 +1,95 @@
 package io.sniperjohnny.github.mirahud.client.screen;
 
 import io.sniperjohnny.github.mirahud.client.config.inventoryconfig.InventoryConfigManager;
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonButton;
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonScreen;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class InventoryWidgetManagerScreen extends Screen {
+public class InventoryWidgetManagerScreen extends NeonScreen {
     public Screen parent;
+
     public InventoryWidgetManagerScreen(Component title, Screen parent) {
         super(title);
         this.parent = parent;
     }
-        @Override
-        protected void init() {
-            Button renderInventoryOverlayButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_INVENTORY_OVERLAY), (btn) -> {
-                InventoryConfigManager.getConfig().showInventoryHud = !InventoryConfigManager.getConfig().showInventoryHud;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_INVENTORY_OVERLAY,
-                        Component.translatable(InventoryConfigManager.getConfig().showInventoryHud ? "options.on" : "options.off")), false);
 
-            }).bounds(40, 30, 200, 20).build();
+    @Override
+    protected void init() {
+        this.addRenderableWidget(new NeonButton(40, 30, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_INVENTORY_OVERLAY), () -> {
+                    InventoryConfigManager.getConfig().showInventoryHud = !InventoryConfigManager.getConfig().showInventoryHud;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_INVENTORY_OVERLAY,
+                            Component.translatable(InventoryConfigManager.getConfig().showInventoryHud ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().showInventoryHud));
 
+        this.addRenderableWidget(new NeonButton(40, 55, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_ENDERCHEST_WIDGET), () -> {
+                    InventoryConfigManager.getConfig().ecWidgetwanted = !InventoryConfigManager.getConfig().ecWidgetwanted;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_ENDERCHEST_WIDGET,
+                            Component.translatable(InventoryConfigManager.getConfig().ecWidgetwanted ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().ecWidgetwanted));
 
-            Button renderEnderchestWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_ENDERCHEST_WIDGET), (btn) -> {
-                InventoryConfigManager.getConfig().ecWidgetwanted = !InventoryConfigManager.getConfig().ecWidgetwanted;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_ENDERCHEST_WIDGET,
-                        Component.translatable(InventoryConfigManager.getConfig().ecWidgetwanted ? "options.on" : "options.off")), false);
+        this.addRenderableWidget(new NeonButton(40, 80, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_AUCTIONHOUSE_WIDGET), () -> {
+                    InventoryConfigManager.getConfig().ahWidgetwanted = !InventoryConfigManager.getConfig().ahWidgetwanted;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_AUCTIONHOUSE_WIDGET,
+                            Component.translatable(InventoryConfigManager.getConfig().ahWidgetwanted ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().ahWidgetwanted));
 
-            }).bounds(40, 55, 200, 20).build();
+        this.addRenderableWidget(new NeonButton(40, 105, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_SELL_WIDGET), () -> {
+                    InventoryConfigManager.getConfig().sellWidgetwanted = !InventoryConfigManager.getConfig().sellWidgetwanted;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_SELL_WIDGET,
+                            Component.translatable(InventoryConfigManager.getConfig().sellWidgetwanted ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().sellWidgetwanted));
 
-            Button renderahWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_AUCTIONHOUSE_WIDGET), (btn) -> {
-                InventoryConfigManager.getConfig().ahWidgetwanted = !InventoryConfigManager.getConfig().ahWidgetwanted;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_AUCTIONHOUSE_WIDGET,
-                        Component.translatable(InventoryConfigManager.getConfig().ahWidgetwanted ? "options.on" : "options.off")), false);
+        this.addRenderableWidget(new NeonButton(40, 130, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_TRASH_WIDGET), () -> {
+                    InventoryConfigManager.getConfig().trashWidgetwanted = !InventoryConfigManager.getConfig().trashWidgetwanted;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_TRASH_WIDGET,
+                            Component.translatable(InventoryConfigManager.getConfig().trashWidgetwanted ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().trashWidgetwanted));
 
-            }).bounds(40, 80, 200, 20).build();
+        this.addRenderableWidget(new NeonButton(40, 155, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_SHOP_WIDGET), () -> {
+                    InventoryConfigManager.getConfig().shopWidgetwanted = !InventoryConfigManager.getConfig().shopWidgetwanted;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_SHOP_WIDGET,
+                            Component.translatable(InventoryConfigManager.getConfig().shopWidgetwanted ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().shopWidgetwanted));
 
-
-            Button rendersellWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_SELL_WIDGET), (btn) -> {
-                InventoryConfigManager.getConfig().sellWidgetwanted = !InventoryConfigManager.getConfig().sellWidgetwanted;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_SELL_WIDGET,
-                        Component.translatable(InventoryConfigManager.getConfig().sellWidgetwanted ? "options.on" : "options.off")), false);
-
-            }).bounds(40, 105, 200, 20).build();
-            Button rendertrashWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_TRASH_WIDGET), (btn) -> {
-                InventoryConfigManager.getConfig().trashWidgetwanted = !InventoryConfigManager.getConfig().trashWidgetwanted;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_TRASH_WIDGET,
-                        Component.translatable(InventoryConfigManager.getConfig().trashWidgetwanted ? "options.on" : "options.off")), false);
-
-            }).bounds(40, 130, 200, 20).build();
-            Button rendershopWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_SHOP_WIDGET), (btn) -> {
-                InventoryConfigManager.getConfig().shopWidgetwanted = !InventoryConfigManager.getConfig().shopWidgetwanted;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_SHOP_WIDGET,
-                        Component.translatable(InventoryConfigManager.getConfig().shopWidgetwanted ? "options.on" : "options.off")), false);
-
-            }).bounds(40, 155, 200, 20).build();
-            Button rendermarketWidgetButton = Button.builder(Component.translatable(TranslationsKeys.BUTTON_RENDER_MARKET_WIDGET), (btn) -> {
-                InventoryConfigManager.getConfig().marketWidgetwanted = !InventoryConfigManager.getConfig().marketWidgetwanted;
-                InventoryConfigManager.save();
-                this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_MARKET_WIDGET,
-                        Component.translatable(InventoryConfigManager.getConfig().marketWidgetwanted ? "options.on" : "options.off")), false);
-
-            }).bounds(40, 180, 200, 20).build();
-
-            List<Button> buttons = new ArrayList<>();
-            buttons.add(rendertrashWidgetButton);
-            buttons.add(renderahWidgetButton);
-            buttons.add(rendersellWidgetButton);
-            buttons.add(renderEnderchestWidgetButton);
-            buttons.add(renderInventoryOverlayButton);
-            buttons.add(rendershopWidgetButton);
-            buttons.add(rendermarketWidgetButton);
-            for(Button renderbutton : buttons) {
-                this.addRenderableWidget(renderbutton);
-            }
-        }
-        @Override
-        public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-            super.render(graphics, mouseX, mouseY, delta);
-            graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 10, 0xFFFFFFFF, true);
-        }
-
-        @Override
-        public void onClose() {
-            this.minecraft.setScreen(this.parent);
-        }
+        this.addRenderableWidget(new NeonButton(40, 180, 200, 20,
+                Component.translatable(TranslationsKeys.BUTTON_RENDER_MARKET_WIDGET), () -> {
+                    InventoryConfigManager.getConfig().marketWidgetwanted = !InventoryConfigManager.getConfig().marketWidgetwanted;
+                    InventoryConfigManager.save();
+                    this.minecraft.player.displayClientMessage(Component.translatable(TranslationsKeys.MESSAGE_RENDER_MARKET_WIDGET,
+                            Component.translatable(InventoryConfigManager.getConfig().marketWidgetwanted ? "options.on" : "options.off")), false);
+                    rebuildWidgets();
+                }).setActiveState(InventoryConfigManager.getConfig().marketWidgetwanted));
     }
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        super.render(graphics, mouseX, mouseY, delta);
+        graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 10, 0xFFFFFFFF, true);
+    }
+
+    @Override
+    public void onClose() {
+        this.minecraft.setScreen(this.parent);
+    }
+}

@@ -1,6 +1,7 @@
 package io.sniperjohnny.github.mirahud.client.widgets;
 
 import io.sniperjohnny.github.mirahud.MiraHUD;
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -15,9 +16,6 @@ public class CustomWidget extends AbstractWidget {
     private final Runnable onPress;
     private final String iconFilepath;
     public boolean wanted;
-
-    private static final Identifier BUTTON_SPRITE = Identifier.withDefaultNamespace("widget/button");
-    private static final Identifier BUTTON_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("widget/button_highlighted");
 
     public CustomWidget(int x, int y, int width, int height, Runnable onPress, String iconFilepath, boolean wanted) {
         super(x, y, width, height, Component.empty());
@@ -36,16 +34,23 @@ public class CustomWidget extends AbstractWidget {
 
     @Override
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        Identifier backgroundSprite = this.isHovered() ? BUTTON_HIGHLIGHTED_SPRITE : BUTTON_SPRITE;
+        boolean hovered = this.isHovered();
+        int outline = hovered ? NeonScreen.FOLIAGE : NeonScreen.WOOD;
+        int x = this.getX(), y = this.getY(), w = this.width, h = this.height;
 
-        graphics.blitSprite(
-                RenderPipelines.GUI_TEXTURED,
-                backgroundSprite,
-                this.getX(),
-                this.getY(),
-                this.width,
-                this.height
-        );
+        graphics.fill(x, y, x + w, y + h, 0xFF141414);
+        if (hovered) graphics.fill(x, y, x + w, y + h, NeonScreen.ROW_HOVER);
+        if (hovered) graphics.renderOutline(x - 2, y - 2, w + 4, h + 4, NeonScreen.GLOW_HOVER);
+        // chunky 2px pixel border
+        graphics.fill(x, y, x + w, y + 2, outline);
+        graphics.fill(x, y + h - 2, x + w, y + h, outline);
+        graphics.fill(x, y, x + 2, y + h, outline);
+        graphics.fill(x + w - 2, y, x + w, y + h, outline);
+        // pixel corner blocks
+        graphics.fill(x - 1, y - 1, x + 1, y + 1, outline);
+        graphics.fill(x + w - 1, y - 1, x + w + 1, y + 1, outline);
+        graphics.fill(x - 1, y + h - 1, x + 1, y + h + 1, outline);
+        graphics.fill(x + w - 1, y + h - 1, x + w + 1, y + h + 1, outline);
 
         switch (this.iconFilepath) {
             case "ec":

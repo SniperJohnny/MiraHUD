@@ -53,6 +53,7 @@ public class VideoTextureManager implements MediaProvider {
     private volatile boolean finishedNaturally = false;
     private volatile boolean loop = false;
     private volatile double videoFps = 0;
+    private volatile double durationSeconds = 0;
 
     private ByteBuffer rgbaBuffer;
     private byte[] readBuffer;
@@ -122,7 +123,9 @@ public class VideoTextureManager implements MediaProvider {
     }
 
     @Override
-    public double getPlaybackPositionSeconds() {
+    public double getDurationSeconds() { return durationSeconds; }
+
+    @Override public double getPlaybackPositionSeconds() {
         if (audioStreamer != null && audioStreamer.isActive()) {
             return audioStreamer.getPlaybackPositionSeconds() + seekPosition;
         }
@@ -172,10 +175,14 @@ public class VideoTextureManager implements MediaProvider {
         }
     }
 
+    private record ProbeResult(int width, int height, double fps, double duration) {}
+
     private void startFfmpeg(String source) throws IOException {
-        if (!probeDimensions(source)) {
-            throw new IOException("Failed to probe video dimensions for " + source);
-        }
+        ProbeResult probe = probeDimensions(source);
+        originalWidth = probe.width();
+        originalHeight = probe.height();
+        videoFps = probe.fps();
+        durationSeconds = probe.duration();
 
         int maxHeight = VideoConfigManager.getConfig().maxVideoHeight;
         boolean needsScale = maxHeight > 0 && originalHeight > maxHeight;
@@ -282,43 +289,58 @@ public class VideoTextureManager implements MediaProvider {
         frameReaderThread.start();
     }
 
-    private boolean probeDimensions(String source) {
+    private ProbeResult probeDimensions(String source) throws IOException {
+        List<String> cmd = new ArrayList<>();
+        cmd.add(ExternalToolManager.ffprobeCommand()); cmd.add("-v"); cmd.add("error");
+        cmd.add("-select_streams"); cmd.add("v:0");
+        cmd.add("-show_entries"); cmd.add("stream=width,height,r_frame_rate:format=duration");
+        cmd.add("-of"); cmd.add("csv=p=0");
+        cmd.add(source);
+        Process p = ExternalToolManager.startWithRetry(new ProcessBuilder(cmd));
         try {
-            List<String> cmd = new ArrayList<>();
-            cmd.add(ExternalToolManager.ffprobeCommand()); cmd.add("-v"); cmd.add("error");
-            cmd.add("-select_streams"); cmd.add("v:0");
-            cmd.add("-show_entries"); cmd.add("stream=width,height,r_frame_rate");
-            cmd.add("-of"); cmd.add("csv=p=0");
-            cmd.add(source);
-            Process p = ExternalToolManager.startWithRetry(new ProcessBuilder(cmd));
             boolean finished = p.waitFor(5, TimeUnit.SECONDS);
             if (!finished) {
                 p.destroyForcibly();
                 MiraHUD.LOGGER.warn("ffprobe timed out for {}", source);
-                return false;
+                throw new IOException("ffprobe timed out for " + source);
             }
             String out = new String(p.getInputStream().readAllBytes()).trim();
-            if (!out.isEmpty()) {
-                String[] parts = out.split(",");
+            int width = 0, height = 0;
+            double fps = 0, duration = 0;
+            for (String line : out.split("\\r?\\n")) {
+                if (line.isBlank()) continue;
+                String[] parts = line.split(",");
                 if (parts.length >= 2) {
-                    originalWidth  = Integer.parseInt(parts[0].trim());
-                    originalHeight = Integer.parseInt(parts[1].trim());
-                    if (parts.length >= 3) {
-                        videoFps = parseFrameRate(parts[2].trim());
-                    }
-                    if (videoFps <= 0) {
-                        videoFps = 24;
-                        MiraHUD.LOGGER.warn("Could not probe video FPS, defaulting to 24");
-                    } else {
-                        MiraHUD.LOGGER.info("Video FPS: {} (raw: {})", videoFps, parts.length >= 3 ? parts[2].trim() : "N/A");
-                    }
-                    return originalWidth > 0 && originalHeight > 0;
+                    try {
+                        width  = Integer.parseInt(parts[0].trim());
+                        height = Integer.parseInt(parts[1].trim());
+                        if (parts.length >= 3) {
+                            fps = parseFrameRate(parts[2].trim());
+                        }
+                    } catch (NumberFormatException ignored) {}
+                } else if (parts.length == 1) {
+                    try {
+                        duration = Double.parseDouble(parts[0].trim());
+                    } catch (NumberFormatException ignored) {}
                 }
             }
-            return false;
+            if (width <= 0 || height <= 0) {
+                throw new IOException("Failed to probe video dimensions for " + source);
+            }
+            if (fps <= 0) {
+                fps = 24;
+                MiraHUD.LOGGER.warn("Could not probe video FPS, defaulting to 24");
+            } else {
+                MiraHUD.LOGGER.info("Video FPS: {}", fps);
+            }
+            return new ProbeResult(width, height, fps, duration);
+        } catch (IOException e) {
+            throw e;
         } catch (Exception e) {
             MiraHUD.LOGGER.warn("Failed to probe video dimensions for {}", source, e);
-            return false;
+            throw new IOException("Failed to probe video dimensions for " + source);
+        } finally {
+            if (p.isAlive()) p.destroyForcibly();
         }
     }
 
@@ -570,6 +592,7 @@ public class VideoTextureManager implements MediaProvider {
             originalHeight = 0;
             frameSize     = 0;
             videoFps      = 0;
+            durationSeconds = 0;
             seekPosition  = 0;
         }
 

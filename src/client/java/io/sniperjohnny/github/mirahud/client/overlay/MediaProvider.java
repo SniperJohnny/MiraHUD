@@ -36,4 +36,6 @@ public interface MediaProvider {
     default void restart() {}
 
     default double getPlaybackPositionSeconds() { return 0; }
+
+    default double getDurationSeconds() { return 0; }
 }

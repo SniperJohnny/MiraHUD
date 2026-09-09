@@ -155,6 +155,10 @@ public class HudRenderingEntrypoint {
         return false;
     }
 
+    public static MediaProvider getProvider(String overlayId) {
+        return providers.get(overlayId);
+    }
+
     public static void syncProviders() {
         RootConfig root = OverlayConfigManager.getRootConfig();
         Iterator<Map.Entry<String, MediaProvider>> it = providers.entrySet().iterator();

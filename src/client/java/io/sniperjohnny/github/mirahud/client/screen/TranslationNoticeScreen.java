@@ -1,16 +1,17 @@
 package io.sniperjohnny.github.mirahud.client.screen;
 
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonButton;
+import io.sniperjohnny.github.mirahud.client.hud_for_client.NeonScreen;
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
 import java.util.List;
 
-public class TranslationNoticeScreen extends Screen {
+public class TranslationNoticeScreen extends NeonScreen {
 
     private static final int TEXT_MARGIN = 40;
 
@@ -25,13 +26,13 @@ public class TranslationNoticeScreen extends Screen {
     protected void init() {
         int buttonWidth = 220;
         int buttonHeight = 20;
-        this.addRenderableWidget(Button.builder(
-                Component.translatable(TranslationsKeys.CONFIG_AI_TRANSLATION_NOTICE_ACCEPT),
-                b -> onClose()).bounds(
+        this.addRenderableWidget(new NeonButton(
                 (this.width - buttonWidth) / 2,
                 this.height - 60,
                 buttonWidth,
-                buttonHeight).build());
+                buttonHeight,
+                Component.translatable(TranslationsKeys.CONFIG_AI_TRANSLATION_NOTICE_ACCEPT),
+                this::onClose));
     }
 
     @Override
@@ -39,7 +40,7 @@ public class TranslationNoticeScreen extends Screen {
         super.render(graphics, mouseX, mouseY, partialTick);
         Component brand = Component.literal("MiraHUD");
         graphics.drawString(this.font, brand, (this.width - this.font.width(brand)) / 2,
-                this.height / 2 - 110, 0xFF55FF55, true);
+                this.height / 2 - 110, NeonScreen.FOLIAGE, true);
         graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2,
                 this.height / 2 - 88, 0xFFFFFFFF, true);
 

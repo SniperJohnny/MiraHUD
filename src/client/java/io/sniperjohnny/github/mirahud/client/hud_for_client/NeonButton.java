@@ -12,13 +12,13 @@ import net.minecraft.network.chat.Component;
 
 public class NeonButton extends AbstractWidget {
 
-    private static final float LERP = 0.15f;
-
     private final Runnable onClick;
     private boolean activeState;
     private boolean chevron;
     private int currentColor = NeonScreen.IDLE;
     private int currentGlow = 0;
+    private long lastNanos = System.nanoTime();
+    private boolean initialized;
 
     public NeonButton(int x, int y, int width, int height, Component message, Runnable onClick) {
         super(x, y, width, height, message);
@@ -67,13 +67,32 @@ public class NeonButton extends AbstractWidget {
         int target = !this.active ? NeonScreen.DISABLED
                 : hovered ? NeonScreen.HOVER
                 : this.activeState ? NeonScreen.ACTIVE : NeonScreen.IDLE;
-        this.currentColor = NeonScreen.lerpColor(this.currentColor, target, LERP);
-        this.currentGlow = (int) ((this.currentGlow + (NeonScreen.glowFor(hovered, this.activeState) - this.currentGlow) * LERP));
+        float f = NeonScreen.transitionFactor(this.lastNanos, NeonScreen.TRANSITION_SPEED);
+        this.lastNanos = System.nanoTime();
+        if (!this.initialized) {
+            // Snap to the target state on first render so screen rebuilds don't blink.
+            this.currentColor = target;
+            this.currentGlow = NeonScreen.glowFor(hovered, this.activeState);
+            this.initialized = true;
+        } else {
+            this.currentColor = NeonScreen.lerpColor(this.currentColor, target, f);
+            this.currentGlow = (int) (this.currentGlow + (NeonScreen.glowFor(hovered, this.activeState) - this.currentGlow) * f);
+        }
 
-        graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, NeonScreen.ROW);
-        if (hovered && this.active) graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, 0x22131A2E);
-        graphics.renderOutline(this.getX() - 1, this.getY() - 1, this.width + 2, this.height + 2, this.currentGlow);
-        graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, this.currentColor);
+        int x = this.getX(), y = this.getY(), w = this.width, h = this.height;
+        graphics.fill(x, y, x + w, y + h, NeonScreen.ROW);
+        if (hovered && this.active) graphics.fill(x, y, x + w, y + h, NeonScreen.ROW_HOVER);
+        if (this.currentGlow != 0 && NeonScreen.glowVisible(this.currentGlow)) graphics.renderOutline(x - 2, y - 2, w + 4, h + 4, this.currentGlow);
+        // chunky 2px pixel border
+        graphics.fill(x, y, x + w, y + 2, this.currentColor);
+        graphics.fill(x, y + h - 2, x + w, y + h, this.currentColor);
+        graphics.fill(x, y, x + 2, y + h, this.currentColor);
+        graphics.fill(x + w - 2, y, x + w, y + h, this.currentColor);
+        // pixel corner blocks
+        graphics.fill(x - 1, y - 1, x + 1, y + 1, this.currentColor);
+        graphics.fill(x + w - 1, y - 1, x + w + 1, y + 1, this.currentColor);
+        graphics.fill(x - 1, y + h - 1, x + 1, y + h + 1, this.currentColor);
+        graphics.fill(x + w - 1, y + h - 1, x + w + 1, y + h + 1, this.currentColor);
 
         Component label = fitLabel(this.getMessage());
         int textRightInset = this.chevron ? 14 : 0;

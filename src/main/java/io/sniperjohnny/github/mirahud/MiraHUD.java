@@ -12,7 +12,7 @@ public class MiraHUD implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Hello Fabric world!");
+		LOGGER.info("MiraHUD's overlays have started!");
 	}
 
 	public static Identifier id(String path) {

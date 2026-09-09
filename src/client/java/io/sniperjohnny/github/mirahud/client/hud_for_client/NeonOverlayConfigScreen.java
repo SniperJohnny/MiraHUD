@@ -3,6 +3,7 @@ package io.sniperjohnny.github.mirahud.client.hud_for_client;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.sniperjohnny.github.mirahud.MiraHUD;
 import io.sniperjohnny.github.mirahud.client.overlay.ImageTextureManager;
+import io.sniperjohnny.github.mirahud.client.overlay.MediaProvider;
 import io.sniperjohnny.github.mirahud.client.overlay.config.FilePathUtil;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfig;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager;
@@ -11,6 +12,7 @@ import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayPresetManager
 import io.sniperjohnny.github.mirahud.client.translationskeys.TranslationsKeys;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.toasts.SystemToast;
@@ -59,6 +61,11 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     private static final float IMAGE_IMPORT_MAX_SCREEN_FRACTION = 0.35f;
     private static final int IMAGE_IMPORT_MIN_SIZE = 16;
     private static final int OVERLAY_LIST_WIDTH = 130;
+    private static final int TREE_TOP = 66;
+    private static final int ROW_SPACING = 24;
+
+    // Horizontal center of the tree (trunk + branches + stump), set in init().
+    private int trunkCenterX;
 
     private final Screen parent;
     private final List<OverlayConfig> overlayConfigs;
@@ -73,9 +80,11 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     private EditBox heightField;
     private NeonSlider opacitySlider;
     private NeonSlider volumeSlider;
+    private SeekSlider videoSeekSlider;
     private EditBox presetNameField;
 
     private final Map<EditBox, Integer> fieldColors = new HashMap<>();
+    private long fieldLerpLastNanos = System.nanoTime();
     private boolean updatingFields;
     private boolean dragMode;
     private boolean dragging;
@@ -85,6 +94,43 @@ public class NeonOverlayConfigScreen extends NeonScreen {
 
     private int cachedPreviewWidth = -1, cachedPreviewHeight = -1, cachedPreviewX, cachedPreviewY;
 
+    // Settings panel scrolling: on short screens the panel is longer than the
+    // window, so it scrolls with the mouse wheel. Widgets are repositioned in
+    // place (rendering and hit-testing both follow), which keeps every control
+    // reachable at any GUI scale.
+    private double settingsScroll;
+    private int settingsMaxScroll;
+    private final List<WidgetSlot> scrollSlots = new ArrayList<>();
+    private NeonButton mediaTypeButton;
+    private NeonButton enabledButton;
+
+    private record WidgetSlot(AbstractWidget widget, int naturalY) {}
+
+    private <T extends AbstractWidget> T track(T widget) {
+        scrollSlots.add(new WidgetSlot(widget, widget.getY()));
+        this.addRenderableWidget(widget);
+        return widget;
+    }
+
+    private void applySettingsScroll() {
+        int off = (int) Math.round(settingsScroll);
+        for (WidgetSlot slot : scrollSlots) {
+            slot.widget().setY(slot.naturalY() - off);
+        }
+    }
+
+    private void drawScrollbar(GuiGraphics graphics) {
+        if (selectedIndex < 0 || settingsMaxScroll <= 0) return;
+        int trackX = this.width - 6;
+        int trackY = 42;
+        int trackH = this.height - 54;
+        if (trackH < 24) return;
+        graphics.fill(trackX, trackY, trackX + 2, trackY + trackH, 0x33C9A05B);
+        int thumbH = Math.max(16, (int) (trackH * (trackH / (double) (trackH + settingsMaxScroll))));
+        int thumbY = trackY + (int) ((trackH - thumbH) * (settingsScroll / Math.max(1, settingsMaxScroll)));
+        graphics.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, NeonScreen.FOLIAGE);
+    }
+
     public NeonOverlayConfigScreen(Screen parent) {
         super(TITLE);
         this.parent = parent;
@@ -92,7 +138,8 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         this.overlayConfigs = new ArrayList<>(list);
         this.initialConfigs = new ArrayList<>();
         for (OverlayConfig c : list) this.initialConfigs.add(OverlayConfigManager.copyConfig(c));
-        this.selectedIndex = list.isEmpty() ? -1 : 0;
+        // Nothing selected until a branch is clicked (click-to-open).
+        this.selectedIndex = -1;
         OverlayPresetManager.load();
     }
 
@@ -107,11 +154,28 @@ public class NeonOverlayConfigScreen extends NeonScreen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        drawTree(graphics);
+    }
+
+    private void drawTree(GuiGraphics graphics) {
+        // The tree only exists in the stump view: a clean trunk running down
+        // the middle of the screen into the big clickable stump. When a branch
+        // is selected the settings panel replaces the tree.
+        if (selectedIndex >= 0) return;
+        int trunkBottom = TREE_TOP + overlayConfigs.size() * ROW_SPACING + 8;
+        int tx = trunkCenterX - TreeBranchWidget.TRUNK_W / 2;
+        graphics.fill(tx, TREE_TOP - 2, tx + 3, trunkBottom, NeonScreen.WOOD);
+        graphics.fill(tx + 3, TREE_TOP - 2, tx + 4, trunkBottom, NeonScreen.WOOD_DARK);
+    }
+
+    @Override
     protected void init() {
         super.init();
+        trunkCenterX = this.width / 2;
         fieldColors.clear();
         invalidatePreviewCache();
-        if (selectedIndex < 0 && !overlayConfigs.isEmpty()) selectedIndex = 0;
         if (selectedIndex >= overlayConfigs.size()) selectedIndex = overlayConfigs.size() - 1;
         refreshTextureManager();
 
@@ -119,32 +183,55 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         int startY = 42;
         int rowHeight = 22;
 
-        int listY = startY;
-        for (int i = 0; i < overlayConfigs.size(); i++) {
-            final int idx = i;
-            OverlayConfig cfg = overlayConfigs.get(i);
-            String prefix = cfg.enabled ? "§a" : "§7";
-            Component label = Component.literal(prefix).append(cfg.sourcePath.isBlank()
-                    ? Component.translatable(TranslationsKeys.CONFIG_EMPTY)
-                    : Component.literal(truncate(cfg.sourcePath, 14)));
-            this.addRenderableWidget(new NeonButton(5, listY, OVERLAY_LIST_WIDTH - 10, 18, label, () -> selectOverlay(idx))
-                    .setActiveState(idx == selectedIndex));
-            listY += 20;
+        // Top bar: when a branch is selected show Back + Remove, otherwise the
+        // stump-view help text is drawn in render().
+        if (selectedIndex >= 0) {
+            this.addRenderableWidget(new NeonButton(5, 44, 60, 18, Component.literal("< Back"), this::backToStump));
+            this.addRenderableWidget(new NeonButton(70, 44, 55, 18,
+                    Component.literal("- ").append(REMOVE_OVERLAY_LABEL), this::removeOverlay));
         }
-        this.addRenderableWidget(new NeonButton(5, listY + 4, OVERLAY_LIST_WIDTH - 10, 18,
-                Component.literal("+ ").append(ADD_OVERLAY_LABEL), this::addOverlay));
-        this.addRenderableWidget(new NeonButton(5, listY + 24, OVERLAY_LIST_WIDTH - 10, 18,
-                Component.literal("- ").append(REMOVE_OVERLAY_LABEL), this::removeOverlay)
-                .setEnabled(overlayConfigs.size() > 1));
+
+        // The tree (branches + stump) only shows in the stump view. It grows
+        // from the middle of the screen: trunk down the center, branches
+        // alternating left/right, big stump at the base.
+        if (selectedIndex < 0) {
+            int branchY = TREE_TOP;
+            for (int i = 0; i < overlayConfigs.size(); i++) {
+                final int idx = i;
+                OverlayConfig cfg = overlayConfigs.get(i);
+                String prefix = cfg.enabled ? "§a" : "§7";
+                Component label = Component.literal(prefix).append(cfg.sourcePath.isBlank()
+                        ? Component.translatable(TranslationsKeys.CONFIG_EMPTY)
+                        : Component.literal(truncate(cfg.sourcePath, 18)));
+                boolean branchLeft = (i % 2 == 0);
+                int inner = TreeBranchWidget.TRUNK_W / 2;
+                int tipX = branchLeft ? trunkCenterX - inner - TreeBranchWidget.BRANCH_LEN
+                                      : trunkCenterX + inner + TreeBranchWidget.BRANCH_LEN;
+                int wX = branchLeft ? tipX - 8 : trunkCenterX - inner;
+                int wW = branchLeft ? (trunkCenterX - inner) - (tipX - 8)
+                                    : (tipX + 8) - (trunkCenterX - inner);
+                int wY = branchY - TreeBranchWidget.BRANCH_Y_OFFSET;
+                this.addRenderableWidget(new TreeBranchWidget(wX, wY, wW, 22, trunkCenterX, branchLeft,
+                        label, cfg.sourcePath, cfg.enabled, cfg.isVideo(), idx == selectedIndex,
+                        () -> selectOverlay(idx)));
+                branchY += ROW_SPACING;
+            }
+
+            // The big clickable stump is the base of the tree - clicking it grows a branch.
+            int stumpTop = TREE_TOP + overlayConfigs.size() * ROW_SPACING + 8;
+            int sx = (this.width - StumpWidget.STUMP_W) / 2;
+            this.addRenderableWidget(new StumpWidget(sx, stumpTop, ADD_OVERLAY_LABEL, this::addOverlay));
+        }
 
         if (overlayConfigs.isEmpty()) return;
 
         OverlayConfig cfg = selectedConfig();
         if (cfg == null) return;
 
-        this.addRenderableWidget(new NeonButton(editStartX, startY, 140, 18, mediaTypeLabel(cfg), () -> openTypeDropdown(cfg))
+        scrollSlots.clear();
+        mediaTypeButton = track(new NeonButton(editStartX, startY, 140, 18, mediaTypeLabel(cfg), () -> openTypeDropdown(cfg))
                 .setChevron(true));
-        this.addRenderableWidget(new NeonButton(editStartX + 145, startY, 155, 18, enabledLabel(cfg), () -> {
+        enabledButton = track(new NeonButton(editStartX + 145, startY, 155, 18, enabledLabel(cfg), () -> {
             cfg.enabled = !cfg.enabled;
             rebuildWidgets();
         }).setActiveState(cfg.enabled));
@@ -152,13 +239,12 @@ public class NeonOverlayConfigScreen extends NeonScreen {
 
         int browseButtonWidth = 70;
         int pathFieldWidth = Math.max(220, this.width - editStartX - browseButtonWidth - 20);
-        this.pathField = new EditBox(this.font, editStartX, startY, pathFieldWidth, 18, PATH_LABEL);
+        this.pathField = track(new EditBox(this.font, editStartX, startY, pathFieldWidth, 18, PATH_LABEL));
         this.pathField.setValue(cfg.sourcePath);
         this.pathField.setMaxLength(32767);
         if (!cfg.sourcePath.isBlank()) this.pathField.setTooltip(Tooltip.create(Component.literal(cfg.sourcePath)));
         this.pathField.setResponder(this::onPathFieldChanged);
-        this.addRenderableWidget(this.pathField);
-        this.addRenderableWidget(new NeonButton(editStartX + pathFieldWidth + 5, startY, browseButtonWidth, 18,
+        track(new NeonButton(editStartX + pathFieldWidth + 5, startY, browseButtonWidth, 18,
                 Component.translatable(TranslationsKeys.CONFIG_BROWSE), this::openFilePicker));
         startY += rowHeight + 6;
 
@@ -172,39 +258,48 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         this.heightField.setResponder(this::onHeightFieldChanged);
         startY += rowHeight + 6;
 
-        this.opacitySlider = new NeonSlider(editStartX, startY, 295, 18, OPACITY_LABEL, cfg.opacity) {
+        this.opacitySlider = track(new NeonSlider(editStartX, startY, 295, 18, OPACITY_LABEL, cfg.opacity) {
             @Override protected void updateMessage() { setMessage(Component.translatable(TranslationsKeys.CONFIG_OPACITY_VALUE, (int) (this.value * 100))); }
             @Override protected void applyValue() { selectedConfig().opacity = (float) this.value; }
-        };
-        this.addRenderableWidget(this.opacitySlider);
+        });
         startY += rowHeight + 6;
 
         if (cfg.isVideo()) {
-            this.volumeSlider = new NeonSlider(editStartX, startY, 295, 18, VOLUME_LABEL, cfg.volume) {
+            this.volumeSlider = track(new NeonSlider(editStartX, startY, 295, 18, VOLUME_LABEL, cfg.volume) {
                 @Override protected void updateMessage() { setMessage(Component.translatable(TranslationsKeys.CONFIG_VOLUME_VALUE, (int) (this.value * 100))); }
                 @Override protected void applyValue() { selectedConfig().volume = (float) this.value; }
-            };
-            this.addRenderableWidget(this.volumeSlider);
+            });
             startY += rowHeight + 6;
         }
 
         if (cfg.isVideo()) {
-            this.addRenderableWidget(new NeonButton(editStartX, startY, 145, 18, playPauseLabel(cfg), () -> {
+            track(new NeonButton(editStartX, startY, 145, 18, playPauseLabel(cfg), () -> {
                 cfg.playing = !cfg.playing;
                 rebuildWidgets();
             }).setActiveState(cfg.playing));
-            this.addRenderableWidget(new NeonButton(editStartX + 150, startY, 145, 18, loopLabel(cfg), () -> {
+            track(new NeonButton(editStartX + 150, startY, 145, 18, loopLabel(cfg), () -> {
                 cfg.loop = !cfg.loop;
                 rebuildWidgets();
             }).setActiveState(cfg.loop));
             startY += rowHeight + 6;
+
+            // VLC-style seek bar: scrub while dragging, seek once on release.
+            this.videoSeekSlider = track(new SeekSlider(editStartX, startY, 295, 18, 0, value -> {
+                OverlayConfig cur = selectedConfig();
+                if (cur == null) return;
+                MediaProvider p = HudRenderingEntrypoint.getProvider(cur.id);
+                if (p != null && p.getDurationSeconds() > 0) {
+                    p.seek(value * p.getDurationSeconds());
+                }
+            }));
+            startY += rowHeight + 6;
         }
 
-        this.addRenderableWidget(new NeonButton(editStartX, startY, 145, 18, anchorLabel(cfg), () -> {
+        track(new NeonButton(editStartX, startY, 145, 18, anchorLabel(cfg), () -> {
             cfg.anchor = nextAnchor(cfg.anchor);
             rebuildWidgets();
         }));
-        this.addRenderableWidget(new NeonButton(editStartX + 150, startY, 145, 18, lockAspectLabel(cfg), () -> {
+        track(new NeonButton(editStartX + 150, startY, 145, 18, lockAspectLabel(cfg), () -> {
             cfg.lockAspectRatio = !cfg.lockAspectRatio;
             if (cfg.lockAspectRatio) syncHeightToWidth();
             rebuildWidgets();
@@ -214,30 +309,35 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         NeonButton dragButton = new NeonButton(editStartX, startY, 295, 18,
                 Component.translatable(TranslationsKeys.CONFIG_DRAG_MODE), this::enterDragMode);
         dragButton.setTooltip(Tooltip.create(Component.translatable(TranslationsKeys.CONFIG_DRAG_MODE_TOOLTIP)));
-        this.addRenderableWidget(dragButton);
+        track(dragButton);
         startY += rowHeight + 10;
 
-        this.presetNameField = new EditBox(this.font, editStartX, startY, 140, 18, Component.translatable(TranslationsKeys.CONFIG_PRESET_NAME));
+        this.presetNameField = track(new EditBox(this.font, editStartX, startY, 140, 18, Component.translatable(TranslationsKeys.CONFIG_PRESET_NAME)));
         this.presetNameField.setMaxLength(32);
-        this.addRenderableWidget(this.presetNameField);
-        this.addRenderableWidget(new NeonButton(editStartX + 145, startY, 60, 18,
+        track(new NeonButton(editStartX + 145, startY, 60, 18,
                 Component.translatable(TranslationsKeys.CONFIG_SAVE_PRESET), this::savePreset));
-        this.addRenderableWidget(new NeonButton(editStartX + 210, startY, 60, 18,
+        track(new NeonButton(editStartX + 210, startY, 60, 18,
                 Component.translatable(TranslationsKeys.CONFIG_DELETE_PRESET), this::deletePreset));
         startY += rowHeight + 6;
-        this.addRenderableWidget(new NeonButton(editStartX, startY, 100, 18,
+        track(new NeonButton(editStartX, startY, 100, 18,
                 Component.translatable(TranslationsKeys.CONFIG_LOAD_PREV), () -> loadPreset(-1)));
-        this.addRenderableWidget(new NeonButton(editStartX + 105, startY, 100, 18,
+        track(new NeonButton(editStartX + 105, startY, 100, 18,
                 Component.translatable(TranslationsKeys.CONFIG_LOAD_NEXT), () -> loadPreset(1)));
         startY += rowHeight + 10;
 
-        this.addRenderableWidget(new NeonButton(editStartX, startY, 145, 18, CommonComponents.GUI_DONE, this::onClose));
-        this.addRenderableWidget(new NeonButton(editStartX + 150, startY, 145, 18, CommonComponents.GUI_CANCEL, this::onCancel));
+        track(new NeonButton(editStartX, startY, 145, 18, CommonComponents.GUI_DONE, this::onClose));
+        track(new NeonButton(editStartX + 150, startY, 145, 18, CommonComponents.GUI_CANCEL, this::onCancel));
+
+        // The whole panel scrolls as one when the window is too short for it.
+        settingsMaxScroll = Math.max(0, (startY + 18) - (this.height - 12));
+        settingsScroll = Math.max(0, Math.min(settingsScroll, settingsMaxScroll));
+        applySettingsScroll();
     }
 
     private void selectOverlay(int idx) {
         if (idx < 0 || idx >= overlayConfigs.size()) return;
         this.selectedIndex = idx;
+        settingsScroll = 0;
         rebuildWidgets();
     }
 
@@ -268,12 +368,16 @@ public class NeonOverlayConfigScreen extends NeonScreen {
                 typeId -> cfg.mediaType = typeId));
     }
 
+    private void backToStump() {
+        selectedIndex = -1;
+        rebuildWidgets();
+    }
+
     private void removeOverlay() {
-        if (overlayConfigs.size() <= 1) return;
         if (selectedIndex < 0 || selectedIndex >= overlayConfigs.size()) return;
         ImageTextureManager.removeOverlay(overlayConfigs.get(selectedIndex).id);
         overlayConfigs.remove(selectedIndex);
-        if (selectedIndex >= overlayConfigs.size()) selectedIndex = overlayConfigs.size() - 1;
+        selectedIndex = -1;
         rebuildWidgets();
     }
 
@@ -354,30 +458,63 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         renderPreview(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
         graphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, 8, 0xFFFFFFFF, true);
+
         OverlayConfig cfg = selectedConfig();
-        if (cfg == null) return;
+        if (cfg == null) {
+            return;
+        }
         int ex = OVERLAY_LIST_WIDTH + 20;
-        graphics.drawString(this.font, MEDIA_TYPE_LABEL, ex, 32, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, ENABLED_LABEL, ex + 150, 32, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, PATH_LABEL, ex, 56, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, POS_X_LABEL, ex, 80, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, POS_Y_LABEL, ex + 65, 80, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, WIDTH_LABEL, ex + 130, 80, 0xFFFFFFFF, true);
-        graphics.drawString(this.font, HEIGHT_LABEL, ex + 195, 80, 0xFFFFFFFF, true);
-        if (presetNameField != null) graphics.drawString(this.font, PRESET_NAME_LABEL, presetNameField.getX(), presetNameField.getY() - this.font.lineHeight - 2, 0xFFFFFFFF, true);
+        int labelDy = this.font.lineHeight + 2;
+        if (mediaTypeButton != null) graphics.drawString(this.font, MEDIA_TYPE_LABEL, ex, mediaTypeButton.getY() - labelDy, 0xFFFFFFFF, true);
+        if (enabledButton != null) graphics.drawString(this.font, ENABLED_LABEL, ex + 150, enabledButton.getY() - labelDy, 0xFFFFFFFF, true);
+        if (pathField != null) graphics.drawString(this.font, PATH_LABEL, ex, pathField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (posXField != null) graphics.drawString(this.font, POS_X_LABEL, ex, posXField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (posYField != null) graphics.drawString(this.font, POS_Y_LABEL, ex + 65, posYField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (widthField != null) graphics.drawString(this.font, WIDTH_LABEL, ex + 130, widthField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (heightField != null) graphics.drawString(this.font, HEIGHT_LABEL, ex + 195, heightField.getY() - labelDy, 0xFFFFFFFF, true);
+        if (presetNameField != null) graphics.drawString(this.font, PRESET_NAME_LABEL, presetNameField.getX(), presetNameField.getY() - labelDy, 0xFFFFFFFF, true);
+        updateSeekDisplay(graphics, cfg);
         drawFieldOutlines(graphics);
+        drawScrollbar(graphics);
+    }
+
+    private void updateSeekDisplay(GuiGraphics graphics, OverlayConfig cfg) {
+        if (videoSeekSlider == null || !cfg.isVideo()) return;
+        MediaProvider prov = HudRenderingEntrypoint.getProvider(cfg.id);
+        double dur = prov != null ? prov.getDurationSeconds() : 0;
+        double pos = prov != null ? prov.getPlaybackPositionSeconds() : 0;
+        if (dur > 0 && !videoSeekSlider.isUserDragging()) {
+            videoSeekSlider.setSeekValue(Math.max(0, Math.min(1, pos / dur)));
+        }
+        String time = formatTime(pos) + " / " + formatTime(dur);
+        graphics.drawString(this.font, time, videoSeekSlider.getX() + videoSeekSlider.getWidth() + 6,
+                videoSeekSlider.getY() + 5, 0xFFFFFFFF, true);
+    }
+
+    private static String formatTime(double seconds) {
+        int total = (int) Math.max(0, seconds);
+        return String.format("%d:%02d", total / 60, total % 60);
     }
 
     private void drawFieldOutlines(GuiGraphics graphics) {
+        float f = NeonScreen.transitionFactor(fieldLerpLastNanos, NeonScreen.TRANSITION_SPEED);
+        fieldLerpLastNanos = System.nanoTime();
         for (EditBox field : List.of(pathField, posXField, posYField, widthField, heightField, presetNameField)) {
             if (field == null) continue;
             int target = !field.active ? NeonScreen.DISABLED
                     : field.isFocused() ? NeonScreen.ACTIVE
                     : field.isHovered() ? NeonScreen.HOVER : NeonScreen.IDLE;
-            int current = fieldColors.getOrDefault(field, NeonScreen.IDLE);
-            current = NeonScreen.lerpColor(current, target, 0.15f);
+            // Snap on first draw so rebuilds don't blink; lerp afterwards.
+            int current = fieldColors.containsKey(field) ? fieldColors.get(field) : target;
+            if (fieldColors.containsKey(field)) current = NeonScreen.lerpColor(current, target, f);
             fieldColors.put(field, current);
-            graphics.renderOutline(field.getX() - 1, field.getY() - 1, field.getWidth() + 2, field.getHeight() + 2, current);
+            int fx = field.getX(), fy = field.getY(), fw = field.getWidth(), fh = field.getHeight();
+            graphics.renderOutline(fx - 1, fy - 1, fw + 2, fh + 2, current);
+            // pixel corner blocks, matching the buttons
+            graphics.fill(fx - 1, fy - 1, fx + 1, fy + 1, current);
+            graphics.fill(fx + fw - 1, fy - 1, fx + fw + 1, fy + 1, current);
+            graphics.fill(fx - 1, fy + fh - 1, fx + 1, fy + fh + 1, current);
+            graphics.fill(fx + fw - 1, fy + fh - 1, fx + fw + 1, fy + fh + 1, current);
         }
     }
 
@@ -389,8 +526,8 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         }
         graphics.fill(0, 0, this.width, this.height, 0xAA000000);
         int ax = HudRenderingEntrypoint.calculateX(cfg, this.width), ay = HudRenderingEntrypoint.calculateY(cfg, this.height);
-        graphics.renderOutline(ax - 2, ay - 2, cfg.width + 4, cfg.height + 4, 0x6600FF00);
-        graphics.renderOutline(ax - 1, ay - 1, cfg.width + 2, cfg.height + 2, 0xFF00FF00);
+        graphics.renderOutline(ax - 2, ay - 2, cfg.width + 4, cfg.height + 4, NeonScreen.GLOW_HOVER);
+        graphics.renderOutline(ax - 1, ay - 1, cfg.width + 2, cfg.height + 2, NeonScreen.FOLIAGE);
         if (textureManager != null && textureManager.hasTexture())
             graphics.blit(RenderPipelines.GUI_TEXTURED, textureManager.getTextureId(), ax, ay, 0, 0, cfg.width, cfg.height, cfg.width, cfg.height, cfg.getColor());
         int cx = ax + cfg.width / 2, cy = ay + cfg.height / 2;
@@ -461,6 +598,19 @@ public class NeonOverlayConfigScreen extends NeonScreen {
             return true;
         }
         return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (!dragMode && selectedIndex >= 0 && settingsMaxScroll > 0) {
+            double before = settingsScroll;
+            settingsScroll = Math.max(0, Math.min(settingsMaxScroll, settingsScroll - verticalAmount * 14.0));
+            if (settingsScroll != before) {
+                applySettingsScroll();
+                return true;
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -794,7 +944,7 @@ public class NeonOverlayConfigScreen extends NeonScreen {
         EditBox eb = new EditBox(font, x, y, w, 18, Component.empty());
         eb.setValue(String.valueOf(val));
         eb.setFilter(filter);
-        this.addRenderableWidget(eb);
+        track(eb);
         return eb;
     }
 

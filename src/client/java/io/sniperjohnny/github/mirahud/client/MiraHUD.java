@@ -4,6 +4,7 @@ import io.sniperjohnny.github.mirahud.client.config.NoticeConfig;
 import io.sniperjohnny.github.mirahud.client.config.NoticeConfigManager;
 import io.sniperjohnny.github.mirahud.client.config.inventoryconfig.InventoryConfigManager;
 import io.sniperjohnny.github.mirahud.client.hud_for_client.HudRenderingEntrypoint;
+import io.sniperjohnny.github.mirahud.client.overlay.ExternalToolManager;
 import io.sniperjohnny.github.mirahud.client.overlay.ImageTextureManager;
 import io.sniperjohnny.github.mirahud.client.overlay.config.OverlayConfigManager;
 import io.sniperjohnny.github.mirahud.client.overlay.config.VideoConfigManager;
@@ -66,6 +67,11 @@ public class MiraHUD implements ClientModInitializer {
         OverlayConfigManager.load();
         ModKeybinds.register();
         InventoryConfigManager.load();
+
+        // Make sure video overlays have an FFmpeg available: checks for an
+        // installed copy on first launch and, if missing, starts the portable
+        // download in the background (validated, re-downloaded if corrupt).
+        ExternalToolManager.ensureAvailableOnStartup();
 
         HudElementRegistry.attachElementBefore(
                 VanillaHudElements.CHAT,
